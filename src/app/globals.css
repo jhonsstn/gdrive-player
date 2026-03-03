@@ -23,10 +23,34 @@
   background: linear-gradient(135deg, theme(--color-blue-500), #8b5cf6);
 }
 
-/* Plyr dark theme overrides */
-:root {
-  --plyr-color-main: theme(--color-blue-500);
-  --plyr-video-background: #000;
-  --plyr-menu-background: theme(--color-zinc-800);
-  --plyr-menu-color: theme(--color-zinc-50);
+/* Video.js dark theme */
+.video-js .vjs-big-play-button {
+  background-color: theme(--color-blue-500);
+  border: none;
+  border-radius: 50%;
+}
+.video-js .vjs-big-play-button:hover {
+  background-color: theme(--color-blue-600);
+}
+.video-js .vjs-play-progress,
+.video-js .vjs-volume-level {
+  background-color: theme(--color-blue-500);
+}
+.video-js .vjs-slider {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+.video-js .vjs-menu-button-popup .vjs-menu .vjs-menu-content {
+  background-color: theme(--color-zinc-800);
+  color: theme(--color-zinc-50);
+}
+.video-js .vjs-menu li.vjs-selected {
+  background-color: theme(--color-blue-500);
+  color: white;
+}
+.video-js.vjs-fluid {
+  max-height: calc(100vh - 16rem);
+}
+.video-js video {
+  max-height: calc(100vh - 16rem);
+  object-fit: contain;
 }
