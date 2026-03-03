@@ -22,3 +22,11 @@
 @utility gradient-logo {
   background: linear-gradient(135deg, theme(--color-blue-500), #8b5cf6);
 }
+
+/* Plyr dark theme overrides */
+:root {
+  --plyr-color-main: theme(--color-blue-500);
+  --plyr-video-background: #000;
+  --plyr-menu-background: theme(--color-zinc-800);
+  --plyr-menu-color: theme(--color-zinc-50);
+}

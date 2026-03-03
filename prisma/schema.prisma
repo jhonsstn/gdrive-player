@@ -14,3 +14,15 @@ model ConfiguredFolder {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model WatchProgress {
+  id          String   @id @default(cuid())
+  userEmail   String
+  videoId     String
+  currentTime Float    @default(0)
+  duration    Float    @default(0)
+  watched     Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userEmail, videoId])
+}

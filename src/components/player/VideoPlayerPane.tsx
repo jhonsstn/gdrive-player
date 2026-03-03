@@ -1,4 +1,9 @@
+"use client";
+
 import { parseEpisodeName } from "@/lib/episode-name";
+import Plyr from "plyr";
+import "plyr/dist/plyr.css";
+import { useEffect, useRef } from "react";
 
 type VideoEntry = {
   id: string;
@@ -12,6 +17,9 @@ type VideoPlayerPaneProps = {
   canGoPrevious: boolean;
   onNext: () => void;
   onPrevious: () => void;
+  initialTime?: number;
+  onTimeUpdate?: (currentTime: number, duration: number) => void;
+  onEnded?: () => void;
 };
 
 export function VideoPlayerPane({
@@ -20,7 +28,74 @@ export function VideoPlayerPane({
   canGoPrevious,
   onNext,
   onPrevious,
+  initialTime,
+  onTimeUpdate,
+  onEnded,
 }: VideoPlayerPaneProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const playerRef = useRef<Plyr | null>(null);
+  const onTimeUpdateRef = useRef(onTimeUpdate);
+  const onEndedRef = useRef(onEnded);
+  const initialTimeRef = useRef(initialTime);
+
+  useEffect(() => {
+    onTimeUpdateRef.current = onTimeUpdate;
+    onEndedRef.current = onEnded;
+    initialTimeRef.current = initialTime;
+  });
+
+  useEffect(() => {
+    const videoEl = videoRef.current;
+    if (!videoEl || !video) return;
+
+    const player = new Plyr(videoEl, {
+      controls: [
+        "play-large",
+        "play",
+        "progress",
+        "current-time",
+        "duration",
+        "mute",
+        "volume",
+        "settings",
+        "pip",
+        "fullscreen",
+      ],
+      autoplay: true,
+      seekTime: 10,
+      keyboard: { focused: true, global: true },
+    });
+
+    playerRef.current = player;
+
+    function handleLoadedMetadata() {
+      const t = initialTimeRef.current;
+      if (t && t > 0) {
+        player.currentTime = t;
+      }
+    }
+
+    function handleTimeUpdate() {
+      onTimeUpdateRef.current?.(player.currentTime, player.duration);
+    }
+
+    function handleEnded() {
+      onEndedRef.current?.();
+    }
+
+    videoEl.addEventListener("loadedmetadata", handleLoadedMetadata);
+    player.on("timeupdate", handleTimeUpdate);
+    player.on("ended", handleEnded);
+
+    return () => {
+      videoEl.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      player.off("timeupdate", handleTimeUpdate);
+      player.off("ended", handleEnded);
+      player.destroy();
+      playerRef.current = null;
+    };
+  }, [video]);
+
   return (
     <section className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-sm p-0 overflow-hidden flex flex-col">
       <div className="py-4 px-6 flex justify-between items-center border-b border-zinc-800 bg-zinc-800">
@@ -62,10 +137,9 @@ export function VideoPlayerPane({
         {video ? (
           <video
             key={video.id}
-            controls
+            ref={videoRef}
             preload="metadata"
             className="w-full max-h-[calc(100vh-16rem)] outline-none"
-            autoPlay
           >
             <source src={`/api/stream/${video.id}`} type={video.mimeType} />
             Your browser does not support HTML5 video playback.

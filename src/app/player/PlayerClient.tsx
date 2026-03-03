@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { PlaylistPanel } from "@/components/player/PlaylistPanel";
 import { VideoPlayerPane } from "@/components/player/VideoPlayerPane";
+import { useWatchProgress } from "@/hooks/useWatchProgress";
 
 type SortDirection = "asc" | "desc";
 
@@ -70,6 +71,11 @@ export function PlayerClient({ folderId }: PlayerClientProps) {
     };
   }, [sortDirection, folderId]);
 
+  const videoIds = useMemo(() => videos.map((v) => v.id), [videos]);
+
+  const { recordTime, flush, getInitialTime, isWatched } =
+    useWatchProgress(videoIds);
+
   const currentIndex = useMemo(
     () => videos.findIndex((video) => video.id === currentVideoId),
     [currentVideoId, videos],
@@ -82,6 +88,7 @@ export function PlayerClient({ folderId }: PlayerClientProps) {
       return;
     }
 
+    flush();
     setCurrentVideoId(videos[currentIndex + 1]?.id ?? null);
   }
 
@@ -90,7 +97,19 @@ export function PlayerClient({ folderId }: PlayerClientProps) {
       return;
     }
 
+    flush();
     setCurrentVideoId(videos[currentIndex - 1]?.id ?? null);
+  }
+
+  function handleSelect(videoId: string) {
+    flush();
+    setCurrentVideoId(videoId);
+  }
+
+  function handleTimeUpdate(currentTime: number, duration: number) {
+    if (currentVideo) {
+      recordTime(currentVideo.id, currentTime, duration);
+    }
   }
 
   return (
@@ -195,7 +214,8 @@ export function PlayerClient({ folderId }: PlayerClientProps) {
           <PlaylistPanel
             videos={videos}
             currentVideoId={currentVideoId}
-            onSelect={setCurrentVideoId}
+            onSelect={handleSelect}
+            isWatched={isWatched}
           />
           <VideoPlayerPane
             video={currentVideo}
@@ -203,6 +223,9 @@ export function PlayerClient({ folderId }: PlayerClientProps) {
             canGoNext={currentIndex >= 0 && currentIndex < videos.length - 1}
             onPrevious={goPrevious}
             onNext={goNext}
+            initialTime={currentVideo ? getInitialTime(currentVideo.id) : undefined}
+            onTimeUpdate={handleTimeUpdate}
+            onEnded={goNext}
           />
         </div>
       </main>
