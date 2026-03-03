@@ -2,48 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { AppHeader } from "@/components/AppHeader";
 import { FolderConfigForm } from "@/components/config/FolderConfigForm";
 import { isAdminSession } from "@/lib/authz";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
-
-function AdminHeader() {
-  return (
-    <header className="border-b border-zinc-800 bg-zinc-900 px-8 py-4 flex justify-between items-center sticky top-0 z-10">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-md gradient-logo flex items-center justify-center shadow-[0_2px_10px_rgba(59,130,246,0.3)]">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="white"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
-            <circle cx="12" cy="12" r="3"></circle>
-          </svg>
-        </div>
-        <h1 className="text-xl font-semibold tracking-tight">
-          Admin Configuration
-        </h1>
-      </div>
-      <Link
-        href="/player"
-        className="text-sm font-medium text-zinc-400 flex items-center gap-1.5 hover:text-zinc-300"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="19" y1="12" x2="5" y2="12"></line>
-          <polyline points="12 19 5 12 12 5"></polyline>
-        </svg>
-        Back to Player
-      </Link>
-    </header>
-  );
-}
 
 export default async function ConfigPage() {
   const session = await auth();
@@ -55,7 +19,7 @@ export default async function ConfigPage() {
   if (!isAdminSession(session)) {
     return (
       <div className="min-h-screen flex flex-col">
-        <AdminHeader />
+        <AppHeader userImage={session.user.image} userName={session.user.name} />
         <main className="px-8 py-16 flex justify-center">
           <div className="bg-zinc-900 border border-red-500/10 rounded-xl shadow-sm max-w-[500px] w-full text-center px-8 py-12">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-red-500 mb-6 mx-auto" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
@@ -80,7 +44,7 @@ export default async function ConfigPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <AdminHeader />
+      <AppHeader userImage={session.user.image} userName={session.user.name} />
       <main className="px-8 py-12 max-w-[1200px] w-full mx-auto">
         <div className="mb-8 flex justify-between items-end">
           <div>

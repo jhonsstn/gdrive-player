@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { isAdminSession } from "@/lib/authz";
 
 import { PlayerClient } from "../PlayerClient";
 
@@ -18,5 +19,12 @@ export default async function PlayerFolderPage({ params }: PlayerFolderPageProps
 
   const { folderId } = await params;
 
-  return <PlayerClient folderId={folderId} />;
+  return (
+    <PlayerClient
+      folderId={folderId}
+      userImage={session.user.image ?? null}
+      userName={session.user.name ?? null}
+      isAdmin={isAdminSession(session)}
+    />
+  );
 }

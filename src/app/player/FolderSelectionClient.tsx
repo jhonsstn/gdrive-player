@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { AppHeader } from "@/components/AppHeader";
+
 type Folder = {
   id: string;
   folderId: string;
@@ -14,7 +16,17 @@ type FoldersApiResponse = {
   error?: string;
 };
 
-export function FolderSelectionClient() {
+type FolderSelectionClientProps = {
+  userImage?: string | null;
+  userName?: string | null;
+  isAdmin?: boolean;
+};
+
+export function FolderSelectionClient({
+  userImage,
+  userName,
+  isAdmin = false,
+}: FolderSelectionClientProps) {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -50,46 +62,7 @@ export function FolderSelectionClient() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-zinc-800 bg-zinc-900 px-8 py-4 flex justify-between items-center sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-md gradient-logo flex items-center justify-center shadow-[0_2px_10px_rgba(59,130,246,0.3)]">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="white"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polygon points="5 3 19 12 5 21 5 3"></polygon>
-            </svg>
-          </div>
-          <h1 className="text-xl font-semibold tracking-tight">
-            Drive Player
-          </h1>
-        </div>
-        <Link
-          href="/config"
-          className="text-sm font-medium text-zinc-400 flex items-center gap-1.5 hover:text-zinc-300"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-          </svg>
-          Admin
-        </Link>
-      </header>
+      <AppHeader userImage={userImage} userName={userName} showAdminLink={isAdmin} />
 
       <main className="flex-1 p-8 max-w-[1200px] w-full mx-auto">
         <h2 className="text-xl font-semibold tracking-tight mb-6">
