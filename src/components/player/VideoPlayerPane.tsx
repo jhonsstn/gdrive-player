@@ -1,7 +1,6 @@
 "use client";
 
 import { parseEpisodeName } from "@/lib/episode-name";
-import Plyr from "plyr";
 import "plyr/dist/plyr.css";
 import { useEffect, useRef } from "react";
 
@@ -22,6 +21,18 @@ type VideoPlayerPaneProps = {
   onEnded?: () => void;
 };
 
+type PlyrPlayer = {
+  currentTime: number;
+  duration: number;
+  on: (event: string, handler: () => void) => void;
+  off: (event: string, handler: () => void) => void;
+  destroy: () => void;
+};
+
+type PlyrConstructor = new (
+  target: HTMLVideoElement,
+  options?: Record<string, unknown>,
+) => PlyrPlayer;
 export function VideoPlayerPane({
   video,
   canGoNext,
@@ -33,7 +44,7 @@ export function VideoPlayerPane({
   onEnded,
 }: VideoPlayerPaneProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const playerRef = useRef<Plyr | null>(null);
+  const playerRef = useRef<PlyrPlayer | null>(null);
   const onTimeUpdateRef = useRef(onTimeUpdate);
   const onEndedRef = useRef(onEnded);
   const initialTimeRef = useRef(initialTime);
@@ -48,51 +59,82 @@ export function VideoPlayerPane({
     const videoEl = videoRef.current;
     if (!videoEl || !video) return;
 
-    const player = new Plyr(videoEl, {
-      controls: [
-        "play-large",
-        "play",
-        "progress",
-        "current-time",
-        "duration",
-        "mute",
-        "volume",
-        "settings",
-        "pip",
-        "fullscreen",
-      ],
-      autoplay: true,
-      seekTime: 10,
-      keyboard: { focused: true, global: true },
-    });
+    let disposed = false;
+    let cleanup: (() => void) | null = null;
 
-    playerRef.current = player;
+    async function setupPlayer(targetVideoEl: HTMLVideoElement) {
+      try {
+        const plyrModule = await import("plyr");
+        const PlyrCtor =
+          typeof plyrModule === "function"
+            ? (plyrModule as unknown as PlyrConstructor)
+            : ((plyrModule as { default?: PlyrConstructor }).default ??
+              (plyrModule as unknown as PlyrConstructor));
 
-    function handleLoadedMetadata() {
-      const t = initialTimeRef.current;
-      if (t && t > 0) {
-        player.currentTime = t;
+        if (disposed) {
+          return;
+        }
+
+        targetVideoEl.load();
+
+        const player = new PlyrCtor(targetVideoEl, {
+          controls: [
+            "play-large",
+            "play",
+            "progress",
+            "current-time",
+            "duration",
+            "mute",
+            "volume",
+            "settings",
+            "pip",
+            "fullscreen",
+          ],
+          autoplay: true,
+          seekTime: 10,
+          keyboard: { focused: true, global: true },
+        });
+
+        playerRef.current = player;
+
+        function handleLoadedMetadata() {
+          const t = initialTimeRef.current;
+          if (t && t > 0) {
+            player.currentTime = t;
+          }
+        }
+
+        function handleTimeUpdate() {
+          onTimeUpdateRef.current?.(player.currentTime, player.duration);
+        }
+
+        function handleEnded() {
+          onEndedRef.current?.();
+        }
+
+        targetVideoEl.addEventListener("loadedmetadata", handleLoadedMetadata);
+        player.on("timeupdate", handleTimeUpdate);
+        player.on("ended", handleEnded);
+
+        cleanup = () => {
+          targetVideoEl.removeEventListener("loadedmetadata", handleLoadedMetadata);
+          player.off("timeupdate", handleTimeUpdate);
+          player.off("ended", handleEnded);
+          player.destroy();
+          if (playerRef.current === player) {
+            playerRef.current = null;
+          }
+        };
+      } catch (error) {
+        console.error("Failed to initialize Plyr", error);
       }
     }
 
-    function handleTimeUpdate() {
-      onTimeUpdateRef.current?.(player.currentTime, player.duration);
-    }
-
-    function handleEnded() {
-      onEndedRef.current?.();
-    }
-
-    videoEl.addEventListener("loadedmetadata", handleLoadedMetadata);
-    player.on("timeupdate", handleTimeUpdate);
-    player.on("ended", handleEnded);
+    void setupPlayer(videoEl);
 
     return () => {
-      videoEl.removeEventListener("loadedmetadata", handleLoadedMetadata);
-      player.off("timeupdate", handleTimeUpdate);
-      player.off("ended", handleEnded);
-      player.destroy();
-      playerRef.current = null;
+      disposed = true;
+      cleanup?.();
     };
   }, [video]);
 
@@ -136,7 +178,6 @@ export function VideoPlayerPane({
       <div className="bg-black w-full flex justify-center content-center min-h-[400px]">
         {video ? (
           <video
-            key={video.id}
             ref={videoRef}
             preload="metadata"
             className="w-full max-h-[calc(100vh-16rem)] outline-none"
