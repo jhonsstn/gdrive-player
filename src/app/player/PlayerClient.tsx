@@ -135,7 +135,7 @@ export function PlayerClient({
     <div className="min-h-screen flex flex-col">
       <AppHeader userImage={userImage} userName={userName} showAdminLink={isAdmin} />
 
-      <main className="flex-1 p-8 max-w-[1200px] w-full mx-auto">
+      <main className="flex-1 p-8 max-w-[1366px] w-full mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold tracking-tight">{folderName ?? "My Videos"}</h2>
           <button
@@ -169,7 +169,7 @@ export function PlayerClient({
           </div>
         ) : null}
 
-        <div className="grid grid-cols-[minmax(280px,340px)_1fr] gap-6 items-start">
+        <div className="grid grid-cols-[minmax(280px,360px)_1fr] gap-6 items-start">
           <PlaylistPanel
             videos={videos}
             currentVideoId={currentVideoId}

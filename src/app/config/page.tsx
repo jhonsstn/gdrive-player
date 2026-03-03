@@ -45,7 +45,7 @@ export default async function ConfigPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <AppHeader userImage={session.user.image} userName={session.user.name} />
-      <main className="px-8 py-12 max-w-[1200px] w-full mx-auto">
+      <main className="px-8 py-12 max-w-[1366px] w-full mx-auto">
         <div className="mb-8 flex justify-between items-end">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight">Drive Folders</h2>

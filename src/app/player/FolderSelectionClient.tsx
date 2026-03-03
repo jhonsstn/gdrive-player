@@ -64,7 +64,7 @@ export function FolderSelectionClient({
     <div className="min-h-screen flex flex-col">
       <AppHeader userImage={userImage} userName={userName} showAdminLink={isAdmin} />
 
-      <main className="flex-1 p-8 max-w-[1200px] w-full mx-auto">
+      <main className="flex-1 p-8 max-w-[1366px] w-full mx-auto">
         <h2 className="text-xl font-semibold tracking-tight mb-6">
           Select a Folder
         </h2>
