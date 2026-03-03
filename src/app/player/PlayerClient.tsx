@@ -29,7 +29,7 @@ type PlayerClientProps = {
 export function PlayerClient({ folderId }: PlayerClientProps) {
   const [videos, setVideos] = useState<PlayerVideo[]>([]);
   const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   useEffect(() => {
