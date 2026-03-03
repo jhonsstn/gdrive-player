@@ -80,6 +80,71 @@ Open:
 - Only emails listed in `ADMIN_EMAILS` can create/delete configured folders.
 - Non-admin users can access player features but cannot edit folder config.
 
+## Docker Compose
+
+Run the app with Docker — no Node.js installation required.
+
+### Setup
+
+1. Copy the example env file and fill in your values:
+
+```bash
+cp .env.example .env
+```
+
+Required variables in `.env`:
+
+```
+AUTH_SECRET=replace-with-long-random-secret
+AUTH_GOOGLE_ID=your-google-client-id
+AUTH_GOOGLE_SECRET=your-google-client-secret
+ADMIN_EMAILS=admin@example.com
+```
+
+2. Build and start:
+
+```bash
+docker compose up -d
+```
+
+The app is available at `http://localhost:3000`.
+
+### Database
+
+**SQLite (default)** — no extra configuration needed. Data is persisted in a Docker volume (`app-data`) mounted at `/data`.
+
+**PostgreSQL (optional)** — add these variables to your `.env`:
+
+```
+POSTGRES_HOST=your-postgres-host
+POSTGRES_PORT=5432
+POSTGRES_DB=gdrive_player
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your-password
+```
+
+When `POSTGRES_HOST` is set, the container automatically switches to PostgreSQL. The SQLite volume is ignored in this case.
+
+### How it works
+
+The container runs an entrypoint script at startup that:
+
+1. Detects whether PostgreSQL variables are set
+2. Configures `DATABASE_URL` accordingly (PostgreSQL connection string or SQLite file path)
+3. Regenerates the Prisma client for the chosen database provider
+4. Runs `prisma db push` to create/sync tables automatically
+5. Starts the Next.js server
+
+This means the database schema is always up to date — no manual migration steps needed.
+
+### Rebuilding
+
+After pulling new changes:
+
+```bash
+docker compose up -d --build
+```
+
 ## Useful commands
 
 ```bash
