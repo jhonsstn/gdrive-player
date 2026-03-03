@@ -1,0 +1,161 @@
+import { isAllowedVideoMimeType } from "@/lib/video-mime";
+
+const DRIVE_API_BASE_URL = "https://www.googleapis.com/drive/v3";
+const DRIVE_LIST_FIELDS = "nextPageToken,files(id,name,mimeType,size)";
+
+export type DriveVideoFile = {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: string | null;
+  folderId: string;
+};
+
+export class DriveRequestError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = "DriveRequestError";
+  }
+}
+
+type DriveListResponse = {
+  nextPageToken?: string;
+  files?: Array<{
+    id?: string;
+    name?: string;
+    mimeType?: string;
+    size?: string;
+  }>;
+};
+
+function makeAuthHeaders(accessToken: string, range?: string): HeadersInit {
+  return {
+    Authorization: `Bearer ${accessToken}`,
+    ...(range ? { Range: range } : {}),
+  };
+}
+
+async function parseDriveErrorMessage(response: Response): Promise<string> {
+  try {
+    const parsed = (await response.json()) as {
+      error?: { message?: string };
+    };
+
+    if (parsed.error?.message) {
+      return parsed.error.message;
+    }
+  } catch {
+    // Ignore parse failure and return fallback message below.
+  }
+
+  return `Google Drive request failed with status ${response.status}`;
+}
+
+async function listFolderPage(
+  accessToken: string,
+  folderId: string,
+  pageToken?: string,
+): Promise<DriveListResponse> {
+  const search = new URLSearchParams({
+    q: `'${folderId}' in parents and trashed = false`,
+    fields: DRIVE_LIST_FIELDS,
+    pageSize: "1000",
+    supportsAllDrives: "true",
+    includeItemsFromAllDrives: "true",
+  });
+
+  if (pageToken) {
+    search.set("pageToken", pageToken);
+  }
+
+  const response = await fetch(`${DRIVE_API_BASE_URL}/files?${search.toString()}`, {
+    headers: makeAuthHeaders(accessToken),
+  });
+
+  if (!response.ok) {
+    const message = await parseDriveErrorMessage(response);
+    throw new DriveRequestError(message, response.status);
+  }
+
+  return (await response.json()) as DriveListResponse;
+}
+
+export async function listFolderVideos(
+  accessToken: string,
+  folderId: string,
+): Promise<DriveVideoFile[]> {
+  const videos: DriveVideoFile[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const page = await listFolderPage(accessToken, folderId, pageToken);
+
+    for (const file of page.files ?? []) {
+      if (!file.id || !file.name || !file.mimeType) {
+        continue;
+      }
+
+      if (!isAllowedVideoMimeType(file.mimeType)) {
+        continue;
+      }
+
+      videos.push({
+        id: file.id,
+        name: file.name,
+        mimeType: file.mimeType,
+        size: file.size ?? null,
+        folderId,
+      });
+    }
+
+    pageToken = page.nextPageToken;
+  } while (pageToken);
+
+  return videos;
+}
+
+export async function streamDriveFile(
+  accessToken: string,
+  fileId: string,
+  rangeHeader?: string | null,
+): Promise<Response> {
+  const response = await fetch(
+    `${DRIVE_API_BASE_URL}/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`,
+    {
+      headers: makeAuthHeaders(accessToken, rangeHeader ?? undefined),
+    },
+  );
+
+  if (!response.ok) {
+    const message = await parseDriveErrorMessage(response);
+    throw new DriveRequestError(message, response.status);
+  }
+
+  return response;
+}
+
+export function getStreamPassthroughHeaders(source: Headers): Headers {
+  const passthrough = new Headers();
+
+  const headerNames = [
+    "accept-ranges",
+    "cache-control",
+    "content-length",
+    "content-range",
+    "content-type",
+    "etag",
+    "last-modified",
+  ];
+
+  for (const header of headerNames) {
+    const value = source.get(header);
+    if (value) {
+      passthrough.set(header, value);
+    }
+  }
+
+  return passthrough;
+}
