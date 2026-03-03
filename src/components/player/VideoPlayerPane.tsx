@@ -20,43 +20,34 @@ export function VideoPlayerPane({
   onPrevious,
 }: VideoPlayerPaneProps) {
   return (
-    <section className="card" style={{ padding: "0", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-      <div
-        style={{
-          padding: "1rem 1.5rem",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          borderBottom: "1px solid var(--border-color)",
-          backgroundColor: "var(--bg-tertiary)"
-        }}
-      >
-        <h2 style={{ margin: 0, fontSize: "1rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+    <section className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-sm p-0 overflow-hidden flex flex-col">
+      <div className="py-4 px-6 flex justify-between items-center border-b border-zinc-800 bg-zinc-800">
+        <h2 className="text-base font-semibold tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
           {video ? video.name : "Select a video"}
         </h2>
-        
-        <div style={{ display: "flex", gap: "0.5rem" }}>
-          <button 
-            type="button" 
-            onClick={onPrevious} 
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onPrevious}
             disabled={!canGoPrevious}
-            style={{ padding: "0.4rem 0.75rem", display: "flex", alignItems: "center", gap: "0.25rem" }}
+            className="inline-flex items-center justify-center text-sm font-medium rounded-md border border-zinc-800 bg-zinc-900 text-zinc-50 cursor-pointer transition-all duration-200 hover:not-disabled:bg-zinc-800 hover:not-disabled:border-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50 disabled:cursor-not-allowed py-1.5 px-3 gap-1"
             title="Previous video"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="19 20 9 12 19 4 19 20"></polygon>
               <line x1="5" y1="19" x2="5" y2="5"></line>
             </svg>
-            <span style={{ display: "none" }}>Prev</span>
+            <span className="hidden">Prev</span>
           </button>
-          <button 
-            type="button" 
-            onClick={onNext} 
+          <button
+            type="button"
+            onClick={onNext}
             disabled={!canGoNext}
-            style={{ padding: "0.4rem 0.75rem", display: "flex", alignItems: "center", gap: "0.25rem" }}
+            className="inline-flex items-center justify-center text-sm font-medium rounded-md border border-zinc-800 bg-zinc-900 text-zinc-50 cursor-pointer transition-all duration-200 hover:not-disabled:bg-zinc-800 hover:not-disabled:border-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50 disabled:cursor-not-allowed py-1.5 px-3 gap-1"
             title="Next video"
           >
-            <span style={{ display: "none" }}>Next</span>
+            <span className="hidden">Next</span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="5 4 15 12 5 20 5 4"></polygon>
               <line x1="19" y1="5" x2="19" y2="19"></line>
@@ -65,24 +56,24 @@ export function VideoPlayerPane({
         </div>
       </div>
 
-      <div style={{ backgroundColor: "#000", width: "100%", display: "flex", justifyContent: "center", alignContent: "center", minHeight: "400px" }}>
+      <div className="bg-black w-full flex justify-center content-center min-h-[400px]">
         {video ? (
           <video
             key={video.id}
             controls
             preload="metadata"
-            style={{ width: "100%", maxHeight: "calc(100vh - 16rem)", outline: "none" }}
+            className="w-full max-h-[calc(100vh-16rem)] outline-none"
             autoPlay
           >
             <source src={`/api/stream/${video.id}`} type={video.mimeType} />
             Your browser does not support HTML5 video playback.
           </video>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", width: "100%" }}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: "1rem", opacity: 0.5 }}>
+          <div className="flex flex-col items-center justify-center text-zinc-500 w-full">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="mb-4 opacity-50">
               <polygon points="5 3 19 12 5 21 5 3"></polygon>
             </svg>
-            <p style={{ margin: 0 }}>Select a video from the playlist to start playback</p>
+            <p>Select a video from the playlist to start playback</p>
           </div>
         )}
       </div>

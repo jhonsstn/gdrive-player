@@ -18,27 +18,19 @@ export function PlaylistPanel({
   onSelect,
 }: PlaylistPanelProps) {
   return (
-    <aside
-      className="card"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "calc(100vh - 12rem)",
-        padding: "1rem 0",
-      }}
-    >
-      <div style={{ padding: "0 1.5rem", marginBottom: "1rem" }}>
-        <h3 style={{ margin: 0, fontSize: "1rem", color: "var(--text-secondary)" }}>
+    <aside className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-sm flex flex-col h-[calc(100vh-12rem)] py-4">
+      <div className="px-6 mb-4">
+        <h3 className="text-base font-semibold text-zinc-400">
           Playlist
         </h3>
       </div>
-      
+
       {videos.length === 0 ? (
-        <p style={{ padding: "0 1.5rem" }}>No videos available.</p>
+        <p className="px-6 text-zinc-400">No videos available.</p>
       ) : null}
 
-      <div style={{ overflowY: "auto", flex: 1, padding: "0 1rem" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+      <div className="overflow-y-auto flex-1 px-4">
+        <div className="flex flex-col gap-1">
           {videos.map((video) => {
             const active = video.id === currentVideoId;
 
@@ -47,36 +39,13 @@ export function PlaylistPanel({
                 key={video.id}
                 type="button"
                 onClick={() => onSelect(video.id)}
-                style={{
-                  textAlign: "left",
-                  padding: "0.75rem 1rem",
-                  borderRadius: "var(--radius-md)",
-                  border: "none",
-                  backgroundColor: active ? "var(--bg-tertiary)" : "transparent",
-                  color: active ? "var(--accent-primary)" : "var(--text-primary)",
-                  fontWeight: active ? 600 : 400,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.75rem",
-                  transition: "all 0.2s ease",
-                  cursor: "pointer",
-                  width: "100%",
-                }}
-                onMouseEnter={(e) => {
-                  if (!active) e.currentTarget.style.backgroundColor = "var(--bg-tertiary)";
-                }}
-                onMouseLeave={(e) => {
-                  if (!active) e.currentTarget.style.backgroundColor = "transparent";
-                }}
+                className={`text-left py-3 px-4 rounded-md border-none flex items-center gap-3 transition-all duration-200 cursor-pointer w-full ${
+                  active
+                    ? "bg-zinc-800 text-blue-500 font-semibold"
+                    : "bg-transparent text-zinc-50 font-normal hover:bg-zinc-800"
+                }`}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    minWidth: "24px",
-                  }}
-                >
+                <div className="flex items-center justify-center min-w-[24px]">
                   {active ? (
                     <svg
                       width="16"
@@ -92,7 +61,8 @@ export function PlaylistPanel({
                       height="16"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke="var(--text-muted)"
+                      stroke="currentColor"
+                      className="text-zinc-500"
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -108,13 +78,7 @@ export function PlaylistPanel({
                     </svg>
                   )}
                 </div>
-                <span
-                  style={{
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
+                <span className="whitespace-nowrap overflow-hidden text-ellipsis">
                   {video.name}
                 </span>
               </button>

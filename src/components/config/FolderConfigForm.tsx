@@ -78,15 +78,15 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-      <section className="card" style={{ padding: "2rem" }}>
-        <h3 style={{ marginTop: 0, marginBottom: "1.5rem", fontSize: "1.125rem" }}>
+    <div className="flex flex-col gap-8">
+      <section className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-sm p-8">
+        <h3 className="text-lg font-semibold tracking-tight mb-6">
           Add New Folder
         </h3>
-        
-        <form onSubmit={handleAddFolder} style={{ display: "flex", gap: "1rem", alignItems: "flex-end" }}>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="sourceUrl" style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.875rem", fontWeight: 500, color: "var(--text-secondary)" }}>
+
+        <form onSubmit={handleAddFolder} className="flex gap-4 items-end">
+          <div className="flex-1">
+            <label htmlFor="sourceUrl" className="block mb-2 text-sm font-medium text-zinc-400">
               Google Drive folder URL
             </label>
             <input
@@ -97,27 +97,25 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
               placeholder="https://drive.google.com/drive/folders/..."
               required
               disabled={submitting}
+              className="w-full py-2 px-3 text-sm rounded-md border border-zinc-800 bg-zinc-900 text-zinc-50 transition-all duration-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder:text-zinc-500 disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
-          <button type="submit" disabled={submitting} className="primary" style={{ padding: "0.5rem 1.5rem", height: "38px" }}>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="inline-flex items-center justify-center text-sm font-medium rounded-md border border-transparent bg-blue-500 text-white cursor-pointer transition-all duration-200 hover:not-disabled:bg-blue-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50 disabled:cursor-not-allowed py-2 px-6 h-[38px]"
+          >
             {submitting ? "Saving..." : "Add folder"}
           </button>
         </form>
 
         {message ? (
           <div
-            style={{
-              marginTop: "1rem",
-              padding: "0.75rem 1rem",
-              borderRadius: "var(--radius-md)",
-              backgroundColor: message.type === 'error' ? "var(--error-bg)" : "rgba(34, 197, 94, 0.1)",
-              border: `1px solid ${message.type === 'error' ? "var(--error)" : "#22c55e"}`,
-              color: message.type === 'error' ? "var(--error)" : "#22c55e",
-              fontSize: "0.9rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem"
-            }}
+            className={`mt-4 py-3 px-4 rounded-md text-[0.9rem] flex items-center gap-2 border ${
+              message.type === 'error'
+                ? "bg-red-500/10 border-red-500 text-red-500"
+                : "bg-green-500/10 border-green-500 text-green-500"
+            }`}
           >
             {message.type === 'error' ? (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
@@ -130,52 +128,30 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
       </section>
 
       <section>
-        <h3 style={{ marginTop: 0, marginBottom: "1rem", fontSize: "1.125rem" }}>
+        <h3 className="text-lg font-semibold tracking-tight mb-4">
           Configured Folders ({folders.length})
         </h3>
-        
+
         {!hasFolders ? (
-          <div className="card" style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)", borderStyle: "dashed" }}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: "1rem", opacity: 0.5 }}>
+          <div className="bg-zinc-900 border border-zinc-800 border-dashed rounded-xl shadow-sm py-12 px-8 text-center text-zinc-500">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="mb-4 opacity-50 mx-auto">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
             </svg>
-            <p style={{ margin: 0 }}>No folders configured yet. Add one above.</p>
+            <p>No folders configured yet. Add one above.</p>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div className="flex flex-col gap-4">
             {folders.map((folder) => (
               <div
                 key={folder.id}
-                className="card"
-                style={{ 
-                  display: "flex", 
-                  justifyContent: "space-between", 
-                  alignItems: "center",
-                  padding: "1.25rem 1.5rem" 
-                }}
+                className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-sm flex justify-between items-center py-5 px-6"
               >
-                <div style={{ overflow: "hidden", paddingRight: "1rem" }}>
-                  <code 
-                    style={{ 
-                      display: "inline-block",
-                      padding: "0.25rem 0.5rem", 
-                      backgroundColor: "var(--bg-tertiary)", 
-                      borderRadius: "var(--radius-sm)",
-                      fontSize: "0.8rem",
-                      marginBottom: "0.5rem",
-                      color: "var(--accent-primary)"
-                    }}
-                  >
+                <div className="overflow-hidden pr-4">
+                  <code className="inline-block py-1 px-2 bg-zinc-800 rounded-md text-[0.8rem] mb-2 text-blue-500">
                     ID: {folder.folderId}
                   </code>
-                  <div 
-                    style={{ 
-                      whiteSpace: "nowrap", 
-                      overflow: "hidden", 
-                      textOverflow: "ellipsis",
-                      color: "var(--text-secondary)",
-                      fontSize: "0.9rem"
-                    }}
+                  <div
+                    className="whitespace-nowrap overflow-hidden text-ellipsis text-zinc-400 text-[0.9rem]"
                     title={folder.sourceUrl}
                   >
                     {folder.sourceUrl}
@@ -184,8 +160,7 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
                 <button
                   type="button"
                   onClick={() => handleDeleteFolder(folder.id)}
-                  className="destructive"
-                  style={{ flexShrink: 0 }}
+                  className="inline-flex items-center justify-center text-sm font-medium rounded-md border border-red-500/10 bg-transparent text-red-500 cursor-pointer transition-all duration-200 hover:bg-red-500/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 py-2 px-4 shrink-0"
                 >
                   Remove
                 </button>

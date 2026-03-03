@@ -90,33 +90,10 @@ export function PlayerClient() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <header
-        style={{
-          borderBottom: "1px solid var(--border-color)",
-          backgroundColor: "var(--bg-secondary)",
-          padding: "1rem 2rem",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <div
-            style={{
-              width: "32px",
-              height: "32px",
-              borderRadius: "var(--radius-md)",
-              background: "linear-gradient(135deg, var(--accent-primary), #8b5cf6)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 2px 10px rgba(59, 130, 246, 0.3)",
-            }}
-          >
+    <div className="min-h-screen flex flex-col">
+      <header className="border-b border-zinc-800 bg-zinc-900 px-8 py-4 flex justify-between items-center sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-md gradient-logo flex items-center justify-center shadow-[0_2px_10px_rgba(59,130,246,0.3)]">
             <svg
               width="16"
               height="16"
@@ -130,20 +107,13 @@ export function PlayerClient() {
               <polygon points="5 3 19 12 5 21 5 3"></polygon>
             </svg>
           </div>
-          <h1 style={{ margin: 0, fontSize: "1.25rem", letterSpacing: "-0.01em" }}>
+          <h1 className="text-xl font-semibold tracking-tight">
             Drive Player
           </h1>
         </div>
         <Link
           href="/config"
-          style={{
-            fontSize: "0.875rem",
-            fontWeight: 500,
-            color: "var(--text-secondary)",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.375rem",
-          }}
+          className="text-sm font-medium text-zinc-400 flex items-center gap-1.5 hover:text-zinc-300"
         >
           <svg
             width="14"
@@ -162,30 +132,15 @@ export function PlayerClient() {
         </Link>
       </header>
 
-      <main
-        style={{
-          flex: 1,
-          padding: "2rem",
-          maxWidth: "var(--max-w)",
-          width: "100%",
-          margin: "0 auto",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "1.5rem",
-          }}
-        >
-          <h2 style={{ margin: 0 }}>My Videos</h2>
+      <main className="flex-1 p-8 max-w-[1200px] w-full mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold tracking-tight">My Videos</h2>
           <button
             type="button"
             onClick={() =>
               setSortDirection((current) => (current === "asc" ? "desc" : "asc"))
             }
-            style={{ display: "flex", gap: "0.5rem", padding: "0.4rem 0.75rem" }}
+            className="inline-flex items-center justify-center text-sm font-medium rounded-md border border-zinc-800 bg-zinc-900 text-zinc-50 cursor-pointer transition-all duration-200 hover:bg-zinc-800 hover:border-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 gap-2 py-1.5 px-3"
           >
             <svg
               width="14"
@@ -196,10 +151,7 @@ export function PlayerClient() {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              style={{
-                transform: sortDirection === "desc" ? "rotate(180deg)" : "none",
-                transition: "transform 0.2s ease",
-              }}
+              className={`transition-transform duration-200 ${sortDirection === "desc" ? "rotate-180" : ""}`}
             >
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <polyline points="19 12 12 19 5 12"></polyline>
@@ -209,29 +161,12 @@ export function PlayerClient() {
         </div>
 
         {statusMessage ? (
-          <div
-            style={{
-              padding: "1rem",
-              borderRadius: "var(--radius-md)",
-              backgroundColor: "var(--bg-secondary)",
-              border: "1px solid var(--border-color)",
-              marginBottom: "1.5rem",
-              textAlign: "center",
-              color: "var(--text-secondary)",
-            }}
-          >
+          <div className="p-4 rounded-md bg-zinc-900 border border-zinc-800 mb-6 text-center text-zinc-400">
             {statusMessage}
           </div>
         ) : null}
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(280px, 340px) 1fr",
-            gap: "1.5rem",
-            alignItems: "start",
-          }}
-        >
+        <div className="grid grid-cols-[minmax(280px,340px)_1fr] gap-6 items-start">
           <PlaylistPanel
             videos={videos}
             currentVideoId={currentVideoId}

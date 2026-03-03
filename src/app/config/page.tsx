@@ -10,32 +10,9 @@ export const dynamic = "force-dynamic";
 
 function AdminHeader() {
   return (
-    <header
-      style={{
-        borderBottom: "1px solid var(--border-color)",
-        backgroundColor: "var(--bg-secondary)",
-        padding: "1rem 2rem",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        position: "sticky",
-        top: 0,
-        zIndex: 10,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-        <div
-          style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "var(--radius-md)",
-            background: "linear-gradient(135deg, var(--accent-primary), #8b5cf6)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 2px 10px rgba(59, 130, 246, 0.3)",
-          }}
-        >
+    <header className="border-b border-zinc-800 bg-zinc-900 px-8 py-4 flex justify-between items-center sticky top-0 z-10">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-md gradient-logo flex items-center justify-center shadow-[0_2px_10px_rgba(59,130,246,0.3)]">
           <svg
             width="16"
             height="16"
@@ -50,20 +27,13 @@ function AdminHeader() {
             <circle cx="12" cy="12" r="3"></circle>
           </svg>
         </div>
-        <h1 style={{ margin: 0, fontSize: "1.25rem", letterSpacing: "-0.01em" }}>
+        <h1 className="text-xl font-semibold tracking-tight">
           Admin Configuration
         </h1>
       </div>
       <Link
         href="/player"
-        style={{
-          fontSize: "0.875rem",
-          fontWeight: 500,
-          color: "var(--text-secondary)",
-          display: "flex",
-          alignItems: "center",
-          gap: "0.375rem",
-        }}
+        className="text-sm font-medium text-zinc-400 flex items-center gap-1.5 hover:text-zinc-300"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="19" y1="12" x2="5" y2="12"></line>
@@ -84,18 +54,18 @@ export default async function ConfigPage() {
 
   if (!isAdminSession(session)) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <div className="min-h-screen flex flex-col">
         <AdminHeader />
-        <main style={{ padding: "4rem 2rem", display: "flex", justifyContent: "center" }}>
-          <div className="card" style={{ maxWidth: "500px", width: "100%", textAlign: "center", padding: "3rem 2rem", border: "1px solid var(--error-bg)" }}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--error)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: "1.5rem" }}>
+        <main className="px-8 py-16 flex justify-center">
+          <div className="bg-zinc-900 border border-red-500/10 rounded-xl shadow-sm max-w-[500px] w-full text-center px-8 py-12">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-red-500 mb-6 mx-auto" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="12" y1="8" x2="12" y2="12"></line>
               <line x1="12" y1="16" x2="12.01" y2="16"></line>
             </svg>
-            <h2 style={{ marginBottom: "0.5rem" }}>Access Denied</h2>
-            <p style={{ marginBottom: "2rem" }}>Your account ({session.user.email}) is not authorized to access the admin configuration.</p>
-            <Link href="/player" style={{ display: "inline-flex", padding: "0.5rem 1rem", backgroundColor: "var(--bg-tertiary)", color: "var(--text-primary)", borderRadius: "var(--radius-md)", fontWeight: 500 }}>
+            <h2 className="text-xl font-semibold tracking-tight mb-2">Access Denied</h2>
+            <p className="text-zinc-400 mb-8">Your account ({session.user.email}) is not authorized to access the admin configuration.</p>
+            <Link href="/player" className="inline-flex py-2 px-4 bg-zinc-800 text-zinc-50 rounded-md font-medium">
               Return to Player
             </Link>
           </div>
@@ -109,18 +79,18 @@ export default async function ConfigPage() {
   });
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <div className="min-h-screen flex flex-col">
       <AdminHeader />
-      <main style={{ padding: "3rem 2rem", maxWidth: "var(--max-w)", width: "100%", margin: "0 auto" }}>
-        <div style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+      <main className="px-8 py-12 max-w-[1200px] w-full mx-auto">
+        <div className="mb-8 flex justify-between items-end">
           <div>
-            <h2 style={{ margin: 0, fontSize: "1.5rem" }}>Drive Folders</h2>
-            <p style={{ margin: "0.5rem 0 0 0", color: "var(--text-secondary)" }}>
+            <h2 className="text-2xl font-semibold tracking-tight">Drive Folders</h2>
+            <p className="text-zinc-400 mt-2">
               Manage the folders synced to the video player.
             </p>
           </div>
-          <div style={{ padding: "0.25rem 0.75rem", backgroundColor: "var(--bg-tertiary)", borderRadius: "var(--radius-md)", fontSize: "0.875rem", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <div style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "var(--accent-primary)" }}></div>
+          <div className="py-1 px-3 bg-zinc-800 rounded-md text-sm text-zinc-400 flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
             {session.user.email}
           </div>
         </div>
