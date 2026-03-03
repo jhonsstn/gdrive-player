@@ -1,0 +1,15 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model ConfiguredFolder {
+  id        String   @id @default(cuid())
+  folderId  String   @unique
+  sourceUrl String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
