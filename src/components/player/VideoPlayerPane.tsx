@@ -43,7 +43,7 @@ export function VideoPlayerPane({
   onTimeUpdate,
   onEnded,
 }: VideoPlayerPaneProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<PlyrPlayer | null>(null);
   const onTimeUpdateRef = useRef(onTimeUpdate);
   const onEndedRef = useRef(onEnded);
@@ -56,13 +56,12 @@ export function VideoPlayerPane({
   });
 
   useEffect(() => {
-    const videoEl = videoRef.current;
-    if (!videoEl || !video) return;
+    const container = containerRef.current;
+    if (!container || !video) return;
 
     let disposed = false;
-    let cleanup: (() => void) | null = null;
 
-    async function setupPlayer(targetVideoEl: HTMLVideoElement) {
+    async function setupPlayer(targetContainer: HTMLDivElement, videoId: string) {
       try {
         const plyrModule = await import("plyr");
         const PlyrCtor =
@@ -71,13 +70,17 @@ export function VideoPlayerPane({
             : ((plyrModule as { default?: PlyrConstructor }).default ??
               (plyrModule as unknown as PlyrConstructor));
 
-        if (disposed) {
-          return;
-        }
+        if (disposed) return;
 
-        targetVideoEl.load();
+        // Create the video element imperatively so Plyr's DOM
+        // mutations never conflict with React's virtual DOM.
+        const videoEl = document.createElement("video");
+        videoEl.preload = "metadata";
+        videoEl.className = "w-full max-h-[calc(100vh-16rem)] outline-none";
+        videoEl.src = `/api/stream/${videoId}`;
+        targetContainer.appendChild(videoEl);
 
-        const player = new PlyrCtor(targetVideoEl, {
+        const player = new PlyrCtor(videoEl, {
           controls: [
             "play-large",
             "play",
@@ -112,31 +115,27 @@ export function VideoPlayerPane({
           onEndedRef.current?.();
         }
 
-        targetVideoEl.addEventListener("loadedmetadata", handleLoadedMetadata);
+        videoEl.addEventListener("loadedmetadata", handleLoadedMetadata);
         player.on("timeupdate", handleTimeUpdate);
         player.on("ended", handleEnded);
-
-        cleanup = () => {
-          targetVideoEl.removeEventListener("loadedmetadata", handleLoadedMetadata);
-          player.off("timeupdate", handleTimeUpdate);
-          player.off("ended", handleEnded);
-          player.destroy();
-          if (playerRef.current === player) {
-            playerRef.current = null;
-          }
-        };
       } catch (error) {
         console.error("Failed to initialize Plyr", error);
       }
     }
 
-    void setupPlayer(videoEl);
+    void setupPlayer(container, video.id);
 
     return () => {
       disposed = true;
-      cleanup?.();
+      if (playerRef.current) {
+        playerRef.current.destroy();
+        playerRef.current = null;
+      }
+      // Wipe the container so the next setup starts with a clean DOM,
+      // regardless of how Plyr left the tree.
+      container.innerHTML = "";
     };
-  }, [video]);
+  }, [video?.id, video]);
 
   return (
     <section className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-sm p-0 overflow-hidden flex flex-col">
@@ -177,14 +176,7 @@ export function VideoPlayerPane({
 
       <div className="bg-black w-full flex justify-center content-center min-h-[400px]">
         {video ? (
-          <video
-            ref={videoRef}
-            preload="metadata"
-            className="w-full max-h-[calc(100vh-16rem)] outline-none"
-          >
-            <source src={`/api/stream/${video.id}`} type={video.mimeType} />
-            Your browser does not support HTML5 video playback.
-          </video>
+          <div ref={containerRef} className="w-full" />
         ) : (
           <div className="flex flex-col items-center justify-center text-zinc-500 w-full">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="mb-4 opacity-50">
