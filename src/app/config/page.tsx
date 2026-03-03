@@ -54,7 +54,7 @@ function AdminHeader() {
         </h1>
       </div>
       <Link
-        href="/"
+        href="/player"
         style={{
           fontSize: "0.875rem",
           fontWeight: 500,
@@ -111,7 +111,7 @@ export default async function ConfigPage() {
             </svg>
             <h2 style={{ marginBottom: "0.5rem" }}>Access Denied</h2>
             <p style={{ marginBottom: "2rem" }}>Your account ({session.user.email}) is not authorized to access the admin configuration.</p>
-            <Link href="/" style={{ display: "inline-flex", padding: "0.5rem 1rem", backgroundColor: "var(--bg-tertiary)", color: "var(--text-primary)", borderRadius: "var(--radius-md)", fontWeight: 500 }}>
+            <Link href="/player" style={{ display: "inline-flex", padding: "0.5rem 1rem", backgroundColor: "var(--bg-tertiary)", color: "var(--text-primary)", borderRadius: "var(--radius-md)", fontWeight: 500 }}>
               Return to Player
             </Link>
           </div>
