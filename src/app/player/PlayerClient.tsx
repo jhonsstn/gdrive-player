@@ -25,6 +25,7 @@ type VideosApiResponse = {
 
 type PlayerClientProps = {
   folderId: string;
+  folderName?: string | null;
   userImage?: string | null;
   userName?: string | null;
   isAdmin?: boolean;
@@ -32,6 +33,7 @@ type PlayerClientProps = {
 
 export function PlayerClient({
   folderId,
+  folderName,
   userImage,
   userName,
   isAdmin = false,
@@ -126,7 +128,7 @@ export function PlayerClient({
 
       <main className="flex-1 p-8 max-w-[1200px] w-full mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold tracking-tight">My Videos</h2>
+          <h2 className="text-xl font-semibold tracking-tight">{folderName ?? "My Videos"}</h2>
           <button
             type="button"
             onClick={() =>
