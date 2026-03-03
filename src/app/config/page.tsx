@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { FolderConfigForm } from "@/components/config/FolderConfigForm";
@@ -78,24 +79,7 @@ export default async function ConfigPage() {
   const session = await auth();
 
   if (!session?.user?.email) {
-    return (
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <AdminHeader />
-        <main style={{ padding: "4rem 2rem", display: "flex", justifyContent: "center" }}>
-          <div className="card" style={{ maxWidth: "500px", width: "100%", textAlign: "center", padding: "3rem 2rem" }}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: "1.5rem" }}>
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            </svg>
-            <h2 style={{ marginBottom: "0.5rem" }}>Authentication Required</h2>
-            <p style={{ marginBottom: "2rem" }}>You must sign in with Google first to access the admin configuration.</p>
-            <Link href="/api/auth/signin" className="button primary" style={{ display: "inline-flex", padding: "0.5rem 1rem", backgroundColor: "var(--accent-primary)", color: "white", borderRadius: "var(--radius-md)", fontWeight: 500 }}>
-              Sign in with Google
-            </Link>
-          </div>
-        </main>
-      </div>
-    );
+    redirect("/");
   }
 
   if (!isAdminSession(session)) {
