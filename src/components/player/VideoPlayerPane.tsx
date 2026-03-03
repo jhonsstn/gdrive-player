@@ -1,3 +1,5 @@
+import { parseEpisodeName } from "@/lib/episode-name";
+
 type VideoEntry = {
   id: string;
   name: string;
@@ -23,7 +25,7 @@ export function VideoPlayerPane({
     <section className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-sm p-0 overflow-hidden flex flex-col">
       <div className="py-4 px-6 flex justify-between items-center border-b border-zinc-800 bg-zinc-800">
         <h2 className="text-base font-semibold tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
-          {video ? video.name : "Select a video"}
+          {video ? parseEpisodeName(video.name) : "Select a video"}
         </h2>
 
         <div className="flex gap-2">

@@ -1,3 +1,5 @@
+import { parseEpisodeName } from "@/lib/episode-name";
+
 type PlaylistVideo = {
   id: string;
   name: string;
@@ -79,7 +81,7 @@ export function PlaylistPanel({
                   )}
                 </div>
                 <span className="whitespace-nowrap overflow-hidden text-ellipsis">
-                  {video.name}
+                  {parseEpisodeName(video.name)}
                 </span>
               </button>
             );
