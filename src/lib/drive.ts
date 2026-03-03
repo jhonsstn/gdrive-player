@@ -1,7 +1,7 @@
 import { isAllowedVideoMimeType } from "@/lib/video-mime";
 
 const DRIVE_API_BASE_URL = "https://www.googleapis.com/drive/v3";
-const DRIVE_LIST_FIELDS = "nextPageToken,files(id,name,mimeType,size)";
+const DRIVE_LIST_FIELDS = "nextPageToken,files(id,name,mimeType,size,modifiedTime)";
 
 export type DriveVideoFile = {
   id: string;
@@ -9,6 +9,7 @@ export type DriveVideoFile = {
   mimeType: string;
   size: string | null;
   folderId: string;
+  modifiedTime: string | null;
 };
 
 export class DriveRequestError extends Error {
@@ -28,6 +29,7 @@ type DriveListResponse = {
     name?: string;
     mimeType?: string;
     size?: string;
+    modifiedTime?: string;
   }>;
 };
 
@@ -131,6 +133,7 @@ export async function listFolderVideos(
         mimeType: file.mimeType,
         size: file.size ?? null,
         folderId,
+        modifiedTime: file.modifiedTime ?? null,
       });
     }
 

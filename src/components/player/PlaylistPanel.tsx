@@ -13,6 +13,7 @@ type PlaylistPanelProps = {
   currentVideoId: string | null;
   onSelect: (videoId: string) => void;
   isWatched?: (videoId: string) => boolean;
+  isNew?: (videoId: string) => boolean;
 };
 
 export function PlaylistPanel({
@@ -20,6 +21,7 @@ export function PlaylistPanel({
   currentVideoId,
   onSelect,
   isWatched,
+  isNew,
 }: PlaylistPanelProps) {
   return (
     <aside className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-sm flex flex-col h-[calc(100vh-12rem)] py-4">
@@ -38,6 +40,7 @@ export function PlaylistPanel({
           {videos.map((video) => {
             const active = video.id === currentVideoId;
             const watched = isWatched?.(video.id) ?? false;
+            const newVideo = !watched && (isNew?.(video.id) ?? false);
 
             return (
               <button
@@ -86,7 +89,7 @@ export function PlaylistPanel({
                 <span className="whitespace-nowrap overflow-hidden text-ellipsis">
                   {parseEpisodeName(video.name)}
                 </span>
-                {watched && (
+                {watched ? (
                   <svg
                     width="16"
                     height="16"
@@ -100,7 +103,11 @@ export function PlaylistPanel({
                   >
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
-                )}
+                ) : newVideo ? (
+                  <span className="ml-auto shrink-0 text-xs font-semibold text-blue-400 bg-blue-400/10 rounded px-1.5 py-0.5">
+                    NEW
+                  </span>
+                ) : null}
               </button>
             );
           })}

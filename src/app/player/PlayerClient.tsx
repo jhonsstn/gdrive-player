@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { PlaylistPanel } from "@/components/player/PlaylistPanel";
 import { VideoPlayerPane } from "@/components/player/VideoPlayerPane";
-import { useWatchProgress } from "@/hooks/useWatchProgress";
+import { useWatchProgress, type VideoMeta } from "@/hooks/useWatchProgress";
 
 type SortDirection = "asc" | "desc";
 
@@ -15,6 +15,7 @@ type PlayerVideo = {
   mimeType: string;
   sourceUrl: string;
   folderId: string;
+  modifiedTime: string | null;
 };
 
 type VideosApiResponse = {
@@ -83,8 +84,16 @@ export function PlayerClient({
 
   const videoIds = useMemo(() => videos.map((v) => v.id), [videos]);
 
-  const { recordTime, flush, getInitialTime, isWatched } =
-    useWatchProgress(videoIds);
+  const videoMeta: VideoMeta = useMemo(() => {
+    const meta: VideoMeta = {};
+    for (const v of videos) {
+      meta[v.id] = { folderId: v.folderId, modifiedTime: v.modifiedTime };
+    }
+    return meta;
+  }, [videos]);
+
+  const { recordTime, flush, getInitialTime, isWatched, isNew } =
+    useWatchProgress(videoIds, videoMeta);
 
   const currentIndex = useMemo(
     () => videos.findIndex((video) => video.id === currentVideoId),
@@ -166,6 +175,7 @@ export function PlayerClient({
             currentVideoId={currentVideoId}
             onSelect={handleSelect}
             isWatched={isWatched}
+            isNew={isNew}
           />
           <VideoPlayerPane
             video={currentVideo}

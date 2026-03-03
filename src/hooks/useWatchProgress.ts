@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type ProgressEntry = {
   currentTime: number;
@@ -10,15 +10,24 @@ type ProgressEntry = {
 
 type ProgressMap = Record<string, ProgressEntry>;
 
+export type VideoMeta = Record<
+  string,
+  { folderId: string; modifiedTime: string | null }
+>;
+
 const FLUSH_INTERVAL_MS = 8_000;
 const WATCHED_THRESHOLD = 0.9;
 
-export function useWatchProgress(videoIds: string[]) {
+export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
   const [progressMap, setProgressMap] = useState<ProgressMap>({});
+  const [lastSeenMap, setLastSeenMap] = useState<Record<string, string>>({});
+  const lastSeenLoaded = useRef(false);
   const bufferRef = useRef<{
     videoId: string;
     currentTime: number;
     duration: number;
+    folderId?: string;
+    videoModifiedTime?: string;
   } | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -44,11 +53,44 @@ export function useWatchProgress(videoIds: string[]) {
     };
   }, [videoIds]);
 
+  // Fetch last-seen timestamps
+  const folderIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const meta of Object.values(videoMeta)) {
+      ids.add(meta.folderId);
+    }
+    return [...ids];
+  }, [videoMeta]);
+
+  useEffect(() => {
+    if (folderIds.length === 0) return;
+
+    let cancelled = false;
+    async function fetchLastSeen() {
+      const response = await fetch(
+        `/api/progress/last-seen?folderIds=${folderIds.join(",")}`,
+      );
+      if (!response.ok || cancelled) return;
+      const data = (await response.json()) as {
+        lastSeen: Record<string, string>;
+      };
+      if (!cancelled) {
+        setLastSeenMap(data.lastSeen);
+        lastSeenLoaded.current = true;
+      }
+    }
+
+    void fetchLastSeen();
+    return () => {
+      cancelled = true;
+    };
+  }, [folderIds]);
+
   const flushBuffer = useCallback(async () => {
     const buf = bufferRef.current;
     if (!buf) return;
 
-    const { videoId, currentTime, duration } = buf;
+    const { videoId, currentTime, duration, folderId, videoModifiedTime } = buf;
     bufferRef.current = null;
 
     const watched = duration > 0 && currentTime / duration >= WATCHED_THRESHOLD;
@@ -59,12 +101,38 @@ export function useWatchProgress(videoIds: string[]) {
       [videoId]: { currentTime, duration, watched },
     }));
 
+    // Optimistically update last-seen when watched
+    if (watched && folderId && videoModifiedTime) {
+      setLastSeenMap((prev) => {
+        const current = prev[folderId];
+        if (!current || videoModifiedTime > current) {
+          return { ...prev, [folderId]: videoModifiedTime };
+        }
+        return prev;
+      });
+    }
+
     try {
       await fetch("/api/progress", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ videoId, currentTime, duration }),
+        body: JSON.stringify({
+          videoId,
+          currentTime,
+          duration,
+          folderId,
+          videoModifiedTime,
+        }),
       });
+
+      // Also update last-seen via dedicated endpoint when watched
+      if (watched && folderId && videoModifiedTime) {
+        await fetch("/api/progress/last-seen", {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ folderId, videoModifiedTime }),
+        });
+      }
     } catch {
       // Silently ignore — the optimistic update still holds
     }
@@ -88,10 +156,7 @@ export function useWatchProgress(videoIds: string[]) {
       if (!buf) return;
       navigator.sendBeacon(
         "/api/progress",
-        new Blob(
-          [JSON.stringify(buf)],
-          { type: "application/json" },
-        ),
+        new Blob([JSON.stringify(buf)], { type: "application/json" }),
       );
       bufferRef.current = null;
     }
@@ -102,9 +167,16 @@ export function useWatchProgress(videoIds: string[]) {
 
   const recordTime = useCallback(
     (videoId: string, currentTime: number, duration: number) => {
-      bufferRef.current = { videoId, currentTime, duration };
+      const meta = videoMeta[videoId];
+      bufferRef.current = {
+        videoId,
+        currentTime,
+        duration,
+        folderId: meta?.folderId,
+        videoModifiedTime: meta?.modifiedTime ?? undefined,
+      };
     },
-    [],
+    [videoMeta],
   );
 
   const flush = useCallback(() => {
@@ -129,5 +201,41 @@ export function useWatchProgress(videoIds: string[]) {
     [progressMap],
   );
 
-  return { recordTime, flush, getInitialTime, isWatched };
+  // Compute effective last-seen per folder (min modifiedTime as fallback for first visit)
+  const effectiveLastSeen = useMemo(() => {
+    const result: Record<string, string> = { ...lastSeenMap };
+    // For folders with no DB record, use minimum modifiedTime (all videos show as NEW)
+    for (const fId of folderIds) {
+      if (!result[fId]) {
+        let minTime: string | null = null;
+        for (const meta of Object.values(videoMeta)) {
+          if (
+            meta.folderId === fId &&
+            meta.modifiedTime &&
+            (!minTime || meta.modifiedTime < minTime)
+          ) {
+            minTime = meta.modifiedTime;
+          }
+        }
+        if (minTime) {
+          result[fId] = minTime;
+        }
+      }
+    }
+    return result;
+  }, [lastSeenMap, folderIds, videoMeta]);
+
+  const isNew = useCallback(
+    (videoId: string): boolean => {
+      if (!lastSeenLoaded.current) return false;
+      const meta = videoMeta[videoId];
+      if (!meta?.modifiedTime) return false;
+      const threshold = effectiveLastSeen[meta.folderId];
+      if (!threshold) return false;
+      return meta.modifiedTime > threshold && !isWatched(videoId);
+    },
+    [videoMeta, effectiveLastSeen, isWatched],
+  );
+
+  return { recordTime, flush, getInitialTime, isWatched, isNew };
 }

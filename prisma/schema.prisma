@@ -26,3 +26,13 @@ model WatchProgress {
 
   @@unique([userEmail, videoId])
 }
+
+model UserFolderLastSeen {
+  id           String   @id @default(cuid())
+  userEmail    String
+  folderId     String
+  lastSeenDate DateTime
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userEmail, folderId])
+}
