@@ -21,13 +21,18 @@ export async function GET(request: Request) {
   }
 
   const accessToken = session.accessToken;
-  const sortDirection = parseSortDirection(
-    new URL(request.url).searchParams.get("sort"),
-  );
+  const url = new URL(request.url);
+  const sortDirection = parseSortDirection(url.searchParams.get("sort"));
+  const filterFolderId = url.searchParams.get("folderId");
 
-  const folders = await db.configuredFolder.findMany({
-    orderBy: { createdAt: "asc" },
-  });
+  const folders = filterFolderId
+    ? await db.configuredFolder.findMany({
+        where: { folderId: filterFolderId },
+        orderBy: { createdAt: "asc" },
+      })
+    : await db.configuredFolder.findMany({
+        orderBy: { createdAt: "asc" },
+      });
 
   try {
     const groupedVideos = await Promise.all(

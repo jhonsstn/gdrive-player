@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 type ConfiguredFolder = {
   id: string;
   folderId: string;
+  name: string | null;
   sourceUrl: string;
   createdAt: string;
   updatedAt: string;
@@ -147,6 +148,9 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
                 className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-sm flex justify-between items-center py-5 px-6"
               >
                 <div className="overflow-hidden pr-4">
+                  <p className="font-medium text-zinc-50 mb-1">
+                    {folder.name ?? "Unnamed folder"}
+                  </p>
                   <code className="inline-block py-1 px-2 bg-zinc-800 rounded-md text-[0.8rem] mb-2 text-blue-500">
                     ID: {folder.folderId}
                   </code>

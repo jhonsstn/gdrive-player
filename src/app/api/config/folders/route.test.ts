@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   findMany: vi.fn(),
   create: vi.fn(),
   delete: vi.fn(),
+  getFolderName: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({
@@ -26,6 +27,10 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
+vi.mock("@/lib/drive", () => ({
+  getFolderName: mocks.getFolderName,
+}));
+
 import { GET, POST } from "@/app/api/config/folders/route";
 
 describe("/api/config/folders", () => {
@@ -42,12 +47,17 @@ describe("/api/config/folders", () => {
     expect(response.status).toBe(403);
   });
 
-  it("creates a folder for admin users", async () => {
-    mocks.auth.mockResolvedValue({ user: { email: "admin@example.com" } });
+  it("creates a folder with name for admin users", async () => {
+    mocks.auth.mockResolvedValue({
+      user: { email: "admin@example.com" },
+      accessToken: "test-token",
+    });
     mocks.isAdminSession.mockReturnValue(true);
+    mocks.getFolderName.mockResolvedValue("My Videos Folder");
     mocks.create.mockResolvedValue({
       id: "cfg_1",
       folderId: "1AbCdEfGhIjKlMnOpQr",
+      name: "My Videos Folder",
       sourceUrl: "https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQr",
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -64,10 +74,12 @@ describe("/api/config/folders", () => {
     );
 
     expect(response.status).toBe(201);
+    expect(mocks.getFolderName).toHaveBeenCalledWith("test-token", "1AbCdEfGhIjKlMnOpQr");
     expect(mocks.create).toHaveBeenCalledWith({
       data: {
         sourceUrl: "https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQr",
         folderId: "1AbCdEfGhIjKlMnOpQr",
+        name: "My Videos Folder",
       },
     });
   });

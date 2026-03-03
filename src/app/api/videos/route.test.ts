@@ -103,4 +103,42 @@ describe("/api/videos", () => {
       "https://drive.google.com/drive/folders/folder_2",
     ]);
   });
+
+  it("filters by folderId when query param is provided", async () => {
+    mocks.auth.mockResolvedValue({
+      user: { email: "user@example.com" },
+      accessToken: "token",
+    });
+
+    mocks.findMany.mockResolvedValue([
+      { folderId: "folder_1", sourceUrl: "https://drive.google.com/drive/folders/folder_1" },
+    ]);
+
+    mocks.listFolderVideos.mockResolvedValueOnce([
+      {
+        id: "v1",
+        name: "Video 1",
+        mimeType: "video/mp4",
+        size: null,
+        folderId: "folder_1",
+      },
+    ]);
+
+    const response = await GET(
+      new Request("http://localhost/api/videos?folderId=folder_1"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.findMany).toHaveBeenCalledWith({
+      where: { folderId: "folder_1" },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const payload = (await response.json()) as {
+      videos: Array<{ id: string }>;
+    };
+
+    expect(payload.videos).toHaveLength(1);
+    expect(payload.videos[0]?.id).toBe("v1");
+  });
 });

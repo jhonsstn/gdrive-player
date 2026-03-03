@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdminSession } from "@/lib/authz";
 import { db } from "@/lib/db";
+import { getFolderName } from "@/lib/drive";
 import { parseDriveFolderId } from "@/lib/drive-url";
 
 type FolderCreateBody = {
@@ -14,7 +15,9 @@ type FolderDeleteBody = {
   id?: string;
 };
 
-async function ensureAdmin() {
+type AdminSession = Awaited<ReturnType<typeof auth>> & { accessToken: string };
+
+async function ensureAdmin(): Promise<NextResponse | AdminSession> {
   const session = await auth();
 
   if (!session?.user?.email) {
@@ -25,13 +28,13 @@ async function ensureAdmin() {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
-  return null;
+  return session as unknown as AdminSession;
 }
 
 export async function GET() {
-  const adminError = await ensureAdmin();
-  if (adminError) {
-    return adminError;
+  const result = await ensureAdmin();
+  if (result instanceof NextResponse) {
+    return result;
   }
 
   const folders = await db.configuredFolder.findMany({
@@ -42,10 +45,12 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const adminError = await ensureAdmin();
-  if (adminError) {
-    return adminError;
+  const result = await ensureAdmin();
+  if (result instanceof NextResponse) {
+    return result;
   }
+
+  const session = result;
 
   let body: FolderCreateBody;
 
@@ -73,11 +78,22 @@ export async function POST(request: Request) {
     );
   }
 
+  let name: string | null = null;
+
+  if (session.accessToken) {
+    try {
+      name = await getFolderName(session.accessToken, folderId);
+    } catch {
+      // Non-fatal — folder will be created without a name.
+    }
+  }
+
   try {
     const created = await db.configuredFolder.create({
       data: {
         sourceUrl: body.sourceUrl,
         folderId,
+        name,
       },
     });
 
@@ -98,9 +114,9 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const adminError = await ensureAdmin();
-  if (adminError) {
-    return adminError;
+  const result = await ensureAdmin();
+  if (result instanceof NextResponse) {
+    return result;
   }
 
   let body: FolderDeleteBody;

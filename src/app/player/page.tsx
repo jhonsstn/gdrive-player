@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 
-import { PlayerClient } from "./PlayerClient";
+import { FolderSelectionClient } from "./FolderSelectionClient";
 
 export const dynamic = "force-dynamic";
 
@@ -12,5 +12,5 @@ export default async function PlayerPage() {
     redirect("/");
   }
 
-  return <PlayerClient />;
+  return <FolderSelectionClient />;
 }

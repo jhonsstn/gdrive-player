@@ -83,6 +83,29 @@ async function listFolderPage(
   return (await response.json()) as DriveListResponse;
 }
 
+export async function getFolderName(
+  accessToken: string,
+  folderId: string,
+): Promise<string> {
+  const search = new URLSearchParams({
+    fields: "name",
+    supportsAllDrives: "true",
+  });
+
+  const response = await fetch(
+    `${DRIVE_API_BASE_URL}/files/${encodeURIComponent(folderId)}?${search.toString()}`,
+    { headers: makeAuthHeaders(accessToken) },
+  );
+
+  if (!response.ok) {
+    const message = await parseDriveErrorMessage(response);
+    throw new DriveRequestError(message, response.status);
+  }
+
+  const data = (await response.json()) as { name?: string };
+  return data.name ?? folderId;
+}
+
 export async function listFolderVideos(
   accessToken: string,
   folderId: string,
