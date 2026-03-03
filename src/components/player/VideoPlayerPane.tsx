@@ -120,7 +120,8 @@ export function VideoPlayerPane({
           controls: true,
           autoplay: true,
           preload: "metadata",
-          fluid: true,
+          fluid: false,
+          fill: true,
           playbackRates: [0.5, 1, 1.25, 1.5, 2],
           controlBar: {
             pictureInPictureToggle: true,
@@ -205,9 +206,9 @@ export function VideoPlayerPane({
         </div>
       </div>
 
-      <div className="bg-black w-full flex justify-center content-center min-h-[400px]">
+      <div className="bg-black w-full min-h-[400px] h-[calc(100vh-16rem)]">
         {video ? (
-          <div ref={containerRef} className="w-full" />
+          <div ref={containerRef} className="w-full h-full" />
         ) : (
           <div className="flex flex-col items-center justify-center text-zinc-500 w-full">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="mb-4 opacity-50">

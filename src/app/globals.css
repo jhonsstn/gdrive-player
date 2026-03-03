@@ -47,16 +47,14 @@
   background-color: theme(--color-blue-500);
   color: white;
 }
-.video-js.vjs-fluid {
-  max-height: calc(100vh - 16rem);
+.video-js video {
+  object-fit: contain;
+}
+.video-js.vjs-fill {
   display: flex;
   align-items: center;
   justify-content: center;
   background: black;
-}
-.video-js video {
-  max-height: calc(100vh - 16rem);
-  object-fit: contain;
 }
 .video-js.vjs-fullscreen {
   display: flex;
