@@ -17,7 +17,7 @@ fi
 npx prisma generate
 
 # Sync schema to database (creates tables if missing)
-npx prisma db push --skip-generate --accept-data-loss
+npx prisma db push --url "$DATABASE_URL" --accept-data-loss
 
 echo "Starting application..."
 exec node server.js
