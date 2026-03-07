@@ -221,7 +221,7 @@ export function PlayerClient({
                 <div className="h-7 w-16 animate-pulse rounded bg-zinc-800" />
                 <div className="h-7 w-16 animate-pulse rounded bg-zinc-800" />
               </div>
-              <div className="h-[calc(100vh-16rem)] min-h-[400px] bg-black" />
+              <div className="h-150 min-h-100 bg-black" />
             </div>
           </div>
         ) : (
