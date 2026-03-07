@@ -9,25 +9,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev          # Dev server (Turbopack)
-npm run build        # Production build
-npm run start        # Production server
-npm run lint         # ESLint
-npm run typecheck    # tsc --noEmit
-npm run test         # Vitest (all *.test.ts)
-npm run test:watch   # Vitest watch mode
+pnpm dev          # Dev server (Turbopack)
+pnpm build        # Production build
+pnpm start        # Production server
+pnpm lint         # ESLint
+pnpm typecheck    # tsc --noEmit
+pnpm test         # Vitest (all *.test.ts)
+pnpm test:watch   # Vitest watch mode
 ```
 
 ### Prisma
 
 ```bash
-npx prisma migrate dev --name <name>   # Create/apply migration
-npx prisma generate                    # Regenerate client
+pnpm prisma migrate dev --name <name>   # Create/apply migration
+pnpm prisma generate                    # Regenerate client
 ```
 
 ## Tech Stack
 
-Next.js 16 (App Router), TypeScript strict, React 19, next-auth v5 (Google OAuth), SQLite via Prisma 7 + `@prisma/adapter-better-sqlite3`, Zod 4 for env validation, Vitest 4, npm.
+Next.js 16 (App Router), TypeScript strict, React 19, next-auth v5 (Google OAuth), SQLite via Prisma 7 + `@prisma/adapter-better-sqlite3`, Zod 4 for env validation, Vitest 4, pnpm.
 
 ## Architecture
 
