@@ -12,6 +12,15 @@ type Folder = {
   name: string | null;
 };
 
+type ContinueWatchingItem = {
+  videoId: string;
+  videoName: string | null;
+  folderId: string;
+  currentTime: number;
+  duration: number;
+  updatedAt: string;
+};
+
 type FoldersApiResponse = {
   folders: Folder[];
   error?: string;
@@ -34,6 +43,8 @@ export function FolderSelectionClient({
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [search, setSearch] = useState("");
   const [newFolderIds, setNewFolderIds] = useState<Set<string>>(new Set());
+  const [continueWatching, setContinueWatching] = useState<ContinueWatchingItem[]>([]);
+  const [isContinueWatchingLoading, setIsContinueWatchingLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +62,7 @@ export function FolderSelectionClient({
       if (!response.ok) {
         setFolders([]);
         setIsLoading(false);
+        setIsContinueWatchingLoading(false);
         setStatusMessage(payload.error ?? "Failed to load folders");
         return;
       }
@@ -59,10 +71,17 @@ export function FolderSelectionClient({
       setIsLoading(false);
       setStatusMessage(payload.folders.length === 0 ? "No folders configured." : null);
 
+      if (payload.folders.length === 0) {
+        setIsContinueWatchingLoading(false);
+      }
+
       if (payload.folders.length > 0) {
         const ids = payload.folders.map((f) => f.folderId).join(",");
         try {
-          const hasNewRes = await fetch(`/api/folders/has-new?folderIds=${ids}`);
+          const [hasNewRes, cwRes] = await Promise.all([
+            fetch(`/api/folders/has-new?folderIds=${ids}`),
+            fetch("/api/progress/continue-watching"),
+          ]);
           if (hasNewRes.ok && !cancelled) {
             const hasNewPayload = (await hasNewRes.json()) as { hasNew: Record<string, boolean> };
             setNewFolderIds(
@@ -73,8 +92,14 @@ export function FolderSelectionClient({
               ),
             );
           }
+          if (cwRes.ok && !cancelled) {
+            const cwPayload = (await cwRes.json()) as { items: ContinueWatchingItem[] };
+            setContinueWatching(cwPayload.items);
+          }
         } catch {
           // silently ignore
+        } finally {
+          if (!cancelled) setIsContinueWatchingLoading(false);
         }
       }
     }
@@ -100,6 +125,67 @@ export function FolderSelectionClient({
       <AppHeader userImage={userImage} userName={userName} showAdminLink={isAdmin} />
 
       <main className="mx-auto w-full max-w-341.5 flex-1 p-8">
+        {isContinueWatchingLoading ? (
+          <section className="mb-8">
+            <div className="mb-4 h-6 w-48 animate-pulse rounded bg-zinc-800" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                  <div className="mb-3 flex items-center gap-3">
+                    <div className="h-6 w-6 shrink-0 animate-pulse rounded-full bg-zinc-800" />
+                    <div className="h-4 flex-1 animate-pulse rounded bg-zinc-800" />
+                  </div>
+                  <div className="mb-3 h-3 w-1/3 animate-pulse rounded bg-zinc-800" />
+                  <div className="h-1 w-full animate-pulse rounded-full bg-zinc-800" />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : continueWatching.length > 0 ? (
+          <section className="mb-8">
+            <h2 className="mb-4 text-xl font-semibold tracking-tight">Continue Watching</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {continueWatching.map((item) => {
+                const folder = folders.find((f) => f.folderId === item.folderId);
+                const percent = item.duration > 0 ? (item.currentTime / item.duration) * 100 : 0;
+                return (
+                  <Link
+                    key={item.videoId}
+                    href={`/player/${item.folderId}?videoId=${item.videoId}`}
+                    className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 transition-all duration-200 hover:border-blue-500/50 hover:bg-zinc-800/50"
+                  >
+                    <div className="mb-3 flex items-center gap-3">
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="shrink-0 text-blue-500"
+                      >
+                        <polygon points="5 3 19 12 5 21 5 3" />
+                      </svg>
+                      <h3 className="truncate font-medium text-zinc-50">
+                        {(item.videoName ?? item.videoId).replace(/\.[^.]+$/, "")}
+                      </h3>
+                    </div>
+                    {folder && (
+                      <p className="mb-3 truncate text-xs text-zinc-500">
+                        {folder.name ?? folder.folderId}
+                      </p>
+                    )}
+                    <div className="h-1 w-full overflow-hidden rounded-full bg-zinc-800">
+                      <div
+                        className="h-full rounded-full bg-blue-500"
+                        style={{ width: `${Math.min(percent, 100)}%` }}
+                      />
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+
         <div className="mb-6 flex items-center justify-between gap-4">
           <h2 className="text-xl font-semibold tracking-tight">Select a Folder</h2>
           <button

@@ -9,9 +9,10 @@ export const dynamic = "force-dynamic";
 
 type PlayerFolderPageProps = {
   params: Promise<{ folderId: string }>;
+  searchParams: Promise<{ videoId?: string }>;
 };
 
-export default async function PlayerFolderPage({ params }: PlayerFolderPageProps) {
+export default async function PlayerFolderPage({ params, searchParams }: PlayerFolderPageProps) {
   const session = await auth();
 
   if (!session?.user?.email) {
@@ -19,6 +20,7 @@ export default async function PlayerFolderPage({ params }: PlayerFolderPageProps
   }
 
   const { folderId } = await params;
+  const { videoId: initialVideoId } = await searchParams;
 
   const folder = await db.configuredFolder.findFirst({
     where: { folderId },
@@ -32,6 +34,7 @@ export default async function PlayerFolderPage({ params }: PlayerFolderPageProps
       userImage={session.user.image ?? null}
       userName={session.user.name ?? null}
       isAdmin={isAdminSession(session)}
+      initialVideoId={initialVideoId}
     />
   );
 }

@@ -38,12 +38,13 @@ export async function PUT(request: Request) {
   }
 
   const body = await request.json();
-  const { videoId, currentTime, duration, folderId, videoModifiedTime } = body as {
+  const { videoId, currentTime, duration, folderId, videoModifiedTime, videoName } = body as {
     videoId?: string;
     currentTime?: number;
     duration?: number;
     folderId?: string;
     videoModifiedTime?: string;
+    videoName?: string;
   };
 
   if (!videoId || currentTime == null || !duration || duration <= 0) {
@@ -65,11 +66,15 @@ export async function PUT(request: Request) {
       currentTime,
       duration,
       watched,
+      folderId: folderId ?? null,
+      videoName: videoName ?? null,
     },
     update: {
       currentTime,
       duration,
       watched,
+      ...(folderId ? { folderId } : {}),
+      ...(videoName ? { videoName } : {}),
     },
   });
 

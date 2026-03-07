@@ -10,7 +10,7 @@ type ProgressEntry = {
 
 type ProgressMap = Record<string, ProgressEntry>;
 
-export type VideoMeta = Record<string, { folderId: string; modifiedTime: string | null }>;
+export type VideoMeta = Record<string, { folderId: string; modifiedTime: string | null; name: string }>;
 
 const FLUSH_INTERVAL_MS = 8_000;
 const WATCHED_THRESHOLD = 0.9;
@@ -25,6 +25,7 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
     duration: number;
     folderId?: string;
     videoModifiedTime?: string;
+    videoName?: string;
   } | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -83,7 +84,7 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
     const buf = bufferRef.current;
     if (!buf) return;
 
-    const { videoId, currentTime, duration, folderId, videoModifiedTime } = buf;
+    const { videoId, currentTime, duration, folderId, videoModifiedTime, videoName } = buf;
     bufferRef.current = null;
 
     const watched = duration > 0 && currentTime / duration >= WATCHED_THRESHOLD;
@@ -115,6 +116,7 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
           duration,
           folderId,
           videoModifiedTime,
+          videoName,
         }),
       });
 
@@ -167,6 +169,7 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
         duration,
         folderId: meta?.folderId,
         videoModifiedTime: meta?.modifiedTime ?? undefined,
+        videoName: meta?.name,
       };
     },
     [videoMeta],

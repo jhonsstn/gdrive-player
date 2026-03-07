@@ -22,6 +22,8 @@ model WatchProgress {
   currentTime Float    @default(0)
   duration    Float    @default(0)
   watched     Boolean  @default(false)
+  folderId    String?
+  videoName   String?
   updatedAt   DateTime @updatedAt
 
   @@unique([userEmail, videoId])

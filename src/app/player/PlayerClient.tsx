@@ -31,6 +31,7 @@ type PlayerClientProps = {
   userImage?: string | null;
   userName?: string | null;
   isAdmin?: boolean;
+  initialVideoId?: string;
 };
 
 export function PlayerClient({
@@ -39,6 +40,7 @@ export function PlayerClient({
   userImage,
   userName,
   isAdmin = false,
+  initialVideoId,
 }: PlayerClientProps) {
   const [videos, setVideos] = useState<PlayerVideo[]>([]);
   const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
@@ -79,6 +81,10 @@ export function PlayerClient({
           return current;
         }
 
+        if (initialVideoId && payload.videos.some((video) => video.id === initialVideoId)) {
+          return initialVideoId;
+        }
+
         return payload.videos[0]?.id ?? null;
       });
       setIsLoading(false);
@@ -116,7 +122,7 @@ export function PlayerClient({
   const videoMeta: VideoMeta = useMemo(() => {
     const meta: VideoMeta = {};
     for (const v of videos) {
-      meta[v.id] = { folderId: v.folderId, modifiedTime: v.modifiedTime };
+      meta[v.id] = { folderId: v.folderId, modifiedTime: v.modifiedTime, name: v.name };
     }
     return meta;
   }, [videos]);
