@@ -3,11 +3,7 @@ import Google from "next-auth/providers/google";
 
 import { getEnv } from "@/lib/env";
 
-const {
-  AUTH_SECRET,
-  AUTH_GOOGLE_ID,
-  AUTH_GOOGLE_SECRET,
-} = getEnv();
+const { AUTH_SECRET, AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET } = getEnv();
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: AUTH_SECRET,

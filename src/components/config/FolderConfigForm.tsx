@@ -27,7 +27,7 @@ async function readApiError(response: Response): Promise<string> {
 export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
   const [folders, setFolders] = useState<ConfiguredFolder[]>(initialFolders);
   const [sourceUrl, setSourceUrl] = useState("");
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const hasFolders = useMemo(() => folders.length > 0, [folders.length]);
@@ -45,16 +45,16 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
       });
 
       if (!response.ok) {
-        setMessage({ text: await readApiError(response), type: 'error' });
+        setMessage({ text: await readApiError(response), type: "error" });
         return;
       }
 
       const parsed = (await response.json()) as { folder: ConfiguredFolder };
       setFolders((current) => [parsed.folder, ...current]);
       setSourceUrl("");
-      setMessage({ text: "Folder added successfully.", type: 'success' });
+      setMessage({ text: "Folder added successfully.", type: "success" });
     } catch {
-      setMessage({ text: "Failed to add folder.", type: 'error' });
+      setMessage({ text: "Failed to add folder.", type: "error" });
     } finally {
       setSubmitting(false);
     }
@@ -70,24 +70,22 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
     });
 
     if (!response.ok) {
-      setMessage({ text: await readApiError(response), type: 'error' });
+      setMessage({ text: await readApiError(response), type: "error" });
       return;
     }
 
     setFolders((current) => current.filter((folder) => folder.id !== id));
-    setMessage({ text: "Folder removed.", type: 'success' });
+    setMessage({ text: "Folder removed.", type: "success" });
   }
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-sm p-8">
-        <h3 className="text-lg font-semibold tracking-tight mb-6">
-          Add New Folder
-        </h3>
+      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 shadow-sm">
+        <h3 className="mb-6 text-lg font-semibold tracking-tight">Add New Folder</h3>
 
-        <form onSubmit={handleAddFolder} className="flex gap-4 items-end">
+        <form onSubmit={handleAddFolder} className="flex items-end gap-4">
           <div className="flex-1">
-            <label htmlFor="sourceUrl" className="block mb-2 text-sm font-medium text-zinc-400">
+            <label htmlFor="sourceUrl" className="mb-2 block text-sm font-medium text-zinc-400">
               Google Drive folder URL
             </label>
             <input
@@ -98,13 +96,13 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
               placeholder="https://drive.google.com/drive/folders/..."
               required
               disabled={submitting}
-              className="w-full py-2 px-3 text-sm rounded-md border border-zinc-800 bg-zinc-900 text-zinc-50 transition-all duration-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder:text-zinc-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-50 transition-all duration-200 placeholder:text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
           <button
             type="submit"
             disabled={submitting}
-            className="inline-flex items-center justify-center text-sm font-medium rounded-md border border-transparent bg-blue-500 text-white cursor-pointer transition-all duration-200 hover:not-disabled:bg-blue-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50 disabled:cursor-not-allowed py-2 px-6 h-[38px]"
+            className="inline-flex h-[38px] cursor-pointer items-center justify-center rounded-md border border-transparent bg-blue-500 px-6 py-2 text-sm font-medium text-white transition-all duration-200 hover:not-disabled:bg-blue-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? "Saving..." : "Add folder"}
           </button>
@@ -112,16 +110,41 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
 
         {message ? (
           <div
-            className={`mt-4 py-3 px-4 rounded-md text-[0.9rem] flex items-center gap-2 border ${
-              message.type === 'error'
-                ? "bg-red-500/10 border-red-500 text-red-500"
-                : "bg-green-500/10 border-green-500 text-green-500"
+            className={`mt-4 flex items-center gap-2 rounded-md border px-4 py-3 text-[0.9rem] ${
+              message.type === "error"
+                ? "border-red-500 bg-red-500/10 text-red-500"
+                : "border-green-500 bg-green-500/10 text-green-500"
             }`}
           >
-            {message.type === 'error' ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            {message.type === "error" ? (
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
             ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
             )}
             {message.text}
           </div>
@@ -129,13 +152,23 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
       </section>
 
       <section>
-        <h3 className="text-lg font-semibold tracking-tight mb-4">
+        <h3 className="mb-4 text-lg font-semibold tracking-tight">
           Configured Folders ({folders.length})
         </h3>
 
         {!hasFolders ? (
-          <div className="bg-zinc-900 border border-zinc-800 border-dashed rounded-xl shadow-sm py-12 px-8 text-center text-zinc-500">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="mb-4 opacity-50 mx-auto">
+          <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-900 px-8 py-12 text-center text-zinc-500 shadow-sm">
+            <svg
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="mx-auto mb-4 opacity-50"
+            >
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
             </svg>
             <p>No folders configured yet. Add one above.</p>
@@ -145,17 +178,15 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
             {folders.map((folder) => (
               <div
                 key={folder.id}
-                className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-sm flex justify-between items-center py-5 px-6"
+                className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 px-6 py-5 shadow-sm"
               >
                 <div className="overflow-hidden pr-4">
-                  <p className="font-medium text-zinc-50 mb-1">
-                    {folder.name ?? "Unnamed folder"}
-                  </p>
-                  <code className="inline-block py-1 px-2 bg-zinc-800 rounded-md text-[0.8rem] mb-2 text-blue-500">
+                  <p className="mb-1 font-medium text-zinc-50">{folder.name ?? "Unnamed folder"}</p>
+                  <code className="mb-2 inline-block rounded-md bg-zinc-800 px-2 py-1 text-[0.8rem] text-blue-500">
                     ID: {folder.folderId}
                   </code>
                   <div
-                    className="whitespace-nowrap overflow-hidden text-ellipsis text-zinc-400 text-[0.9rem]"
+                    className="overflow-hidden text-[0.9rem] text-ellipsis whitespace-nowrap text-zinc-400"
                     title={folder.sourceUrl}
                   >
                     {folder.sourceUrl}
@@ -164,7 +195,7 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
                 <button
                   type="button"
                   onClick={() => handleDeleteFolder(folder.id)}
-                  className="inline-flex items-center justify-center text-sm font-medium rounded-md border border-red-500/10 bg-transparent text-red-500 cursor-pointer transition-all duration-200 hover:bg-red-500/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 py-2 px-4 shrink-0"
+                  className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md border border-red-500/10 bg-transparent px-4 py-2 text-sm font-medium text-red-500 transition-all duration-200 hover:bg-red-500/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
                 >
                   Remove
                 </button>

@@ -61,10 +61,7 @@ export async function POST(request: Request) {
   }
 
   if (!body.sourceUrl?.trim()) {
-    return NextResponse.json(
-      { error: "sourceUrl is required" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "sourceUrl is required" }, { status: 400 });
   }
 
   let folderId: string;
@@ -99,14 +96,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ folder: created }, { status: 201 });
   } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
-      return NextResponse.json(
-        { error: "Folder already configured" },
-        { status: 409 },
-      );
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json({ error: "Folder already configured" }, { status: 409 });
     }
 
     throw error;
@@ -138,10 +129,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2025"
-    ) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
       return NextResponse.json({ error: "Folder not found" }, { status: 404 });
     }
 

@@ -6,6 +6,7 @@
         "dev": "next dev",
         "build": "next build",
         "start": "next start",
+        "format": "prettier --write \"src/**/*.{ts,tsx}\"",
         "lint": "eslint .",
         "typecheck": "tsc --noEmit",
         "test": "vitest run",
@@ -31,6 +32,8 @@
         "@types/react-dom": "^19",
         "eslint": "^9",
         "eslint-config-next": "16.1.6",
+        "prettier": "^3.8.1",
+        "prettier-plugin-tailwindcss": "^0.7.2",
         "prisma": "^7.4.2",
         "typescript": "^5",
         "vitest": "^4.0.2"

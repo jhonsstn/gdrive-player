@@ -9,9 +9,7 @@ export const ALLOWED_VIDEO_MIME_TYPES = new Set<string>([
   "video/3gpp2",
 ]);
 
-export function isAllowedVideoMimeType(
-  mimeType: string | null | undefined,
-): boolean {
+export function isAllowedVideoMimeType(mimeType: string | null | undefined): boolean {
   if (!mimeType) {
     return false;
   }

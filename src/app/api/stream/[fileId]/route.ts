@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import {
-  DriveRequestError,
-  getStreamPassthroughHeaders,
-  streamDriveFile,
-} from "@/lib/drive";
+import { DriveRequestError, getStreamPassthroughHeaders, streamDriveFile } from "@/lib/drive";
 
 type RouteParams = {
   params: Promise<{ fileId: string }>;
@@ -19,10 +15,7 @@ export async function GET(request: Request, { params }: RouteParams) {
   }
 
   if (!session.accessToken) {
-    return NextResponse.json(
-      { error: "Missing Google Drive access token" },
-      { status: 401 },
-    );
+    return NextResponse.json({ error: "Missing Google Drive access token" }, { status: 401 });
   }
 
   const { fileId } = await params;
@@ -49,10 +42,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     });
   } catch (error) {
     if (error instanceof DriveRequestError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status },
-      );
+      return NextResponse.json({ error: error.message }, { status: error.status });
     }
 
     throw error;

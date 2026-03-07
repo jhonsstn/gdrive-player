@@ -24,18 +24,14 @@ export function PlaylistPanel({
   isNew,
 }: PlaylistPanelProps) {
   return (
-    <aside className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-sm flex flex-col h-[calc(100vh-12rem)] py-4">
-      <div className="px-6 mb-4">
-        <h3 className="text-base font-semibold text-zinc-400">
-          Playlist
-        </h3>
+    <aside className="flex h-[calc(100vh-12rem)] flex-col rounded-xl border border-zinc-800 bg-zinc-900 py-4 shadow-sm">
+      <div className="mb-4 px-6">
+        <h3 className="text-base font-semibold text-zinc-400">Playlist</h3>
       </div>
 
-      {videos.length === 0 ? (
-        <p className="px-6 text-zinc-400">No videos available.</p>
-      ) : null}
+      {videos.length === 0 ? <p className="px-6 text-zinc-400">No videos available.</p> : null}
 
-      <div className="overflow-y-auto flex-1 px-4">
+      <div className="flex-1 overflow-y-auto px-4">
         <div className="flex flex-col gap-1">
           {videos.map((video) => {
             const active = video.id === currentVideoId;
@@ -47,20 +43,15 @@ export function PlaylistPanel({
                 key={video.id}
                 type="button"
                 onClick={() => onSelect(video.id)}
-                className={`text-left py-3 px-4 rounded-md border-none flex items-center gap-3 transition-all duration-200 cursor-pointer w-full ${
+                className={`flex w-full cursor-pointer items-center gap-3 rounded-md border-none px-4 py-3 text-left transition-all duration-200 ${
                   active
-                    ? "bg-zinc-800 text-blue-500 font-semibold"
-                    : "bg-transparent text-zinc-50 font-normal hover:bg-zinc-800"
+                    ? "bg-zinc-800 font-semibold text-blue-500"
+                    : "bg-transparent font-normal text-zinc-50 hover:bg-zinc-800"
                 }`}
               >
-                <div className="flex items-center justify-center min-w-[24px]">
+                <div className="flex min-w-[24px] items-center justify-center">
                   {active ? (
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                       <polygon points="5 3 19 12 5 21 5 3"></polygon>
                     </svg>
                   ) : (
@@ -86,7 +77,7 @@ export function PlaylistPanel({
                     </svg>
                   )}
                 </div>
-                <span className="whitespace-nowrap overflow-hidden text-ellipsis">
+                <span className="overflow-hidden text-ellipsis whitespace-nowrap">
                   {parseEpisodeName(video.name)}
                 </span>
                 {watched ? (
@@ -104,7 +95,7 @@ export function PlaylistPanel({
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
                 ) : newVideo ? (
-                  <span className="ml-auto shrink-0 text-xs font-semibold text-blue-400 bg-blue-400/10 rounded px-1.5 py-0.5">
+                  <span className="ml-auto shrink-0 rounded bg-blue-400/10 px-1.5 py-0.5 text-xs font-semibold text-blue-400">
                     NEW
                   </span>
                 ) : null}

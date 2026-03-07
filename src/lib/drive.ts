@@ -85,10 +85,7 @@ async function listFolderPage(
   return (await response.json()) as DriveListResponse;
 }
 
-export async function getFolderName(
-  accessToken: string,
-  folderId: string,
-): Promise<string> {
+export async function getFolderName(accessToken: string, folderId: string): Promise<string> {
   const search = new URLSearchParams({
     fields: "name",
     supportsAllDrives: "true",
@@ -147,9 +144,7 @@ export async function getLatestVideoModifiedTime(
   accessToken: string,
   folderId: string,
 ): Promise<string | null> {
-  const mimeTypeFilter = [...ALLOWED_VIDEO_MIME_TYPES]
-    .map((m) => `mimeType='${m}'`)
-    .join(" or ");
+  const mimeTypeFilter = [...ALLOWED_VIDEO_MIME_TYPES].map((m) => `mimeType='${m}'`).join(" or ");
   const search = new URLSearchParams({
     q: `'${folderId}' in parents and trashed=false and (${mimeTypeFilter})`,
     orderBy: "modifiedTime desc",

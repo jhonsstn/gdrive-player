@@ -51,7 +51,9 @@ export function PlayerClient({
     async function loadVideos() {
       setIsLoading(true);
 
-      const response = await fetch(`/api/videos?sort=${sortDirection}&folderId=${encodeURIComponent(folderId)}`);
+      const response = await fetch(
+        `/api/videos?sort=${sortDirection}&folderId=${encodeURIComponent(folderId)}`,
+      );
       const payload = (await response.json()) as VideosApiResponse;
 
       if (cancelled) {
@@ -95,8 +97,10 @@ export function PlayerClient({
     return meta;
   }, [videos]);
 
-  const { recordTime, flush, getInitialTime, isWatched, isNew } =
-    useWatchProgress(videoIds, videoMeta);
+  const { recordTime, flush, getInitialTime, isWatched, isNew } = useWatchProgress(
+    videoIds,
+    videoMeta,
+  );
 
   const currentIndex = useMemo(
     () => videos.findIndex((video) => video.id === currentVideoId),
@@ -135,18 +139,16 @@ export function PlayerClient({
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-screen flex-col">
       <AppHeader userImage={userImage} userName={userName} showAdminLink={isAdmin} />
 
-      <main className="flex-1 p-8 max-w-[1366px] w-full mx-auto">
-        <div className="flex justify-between items-center mb-6">
+      <main className="mx-auto w-full max-w-[1366px] flex-1 p-8">
+        <div className="mb-6 flex items-center justify-between">
           <h2 className="text-xl font-semibold tracking-tight">{folderName ?? "My Videos"}</h2>
           <button
             type="button"
-            onClick={() =>
-              setSortDirection((current) => (current === "asc" ? "desc" : "asc"))
-            }
-            className="inline-flex items-center justify-center text-sm font-medium rounded-md border border-zinc-800 bg-zinc-900 text-zinc-50 cursor-pointer transition-all duration-200 hover:bg-zinc-800 hover:border-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 gap-2 py-1.5 px-3"
+            onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
+            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-50 transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
           >
             <svg
               width="14"
@@ -167,54 +169,57 @@ export function PlayerClient({
         </div>
 
         {statusMessage ? (
-          <div className="p-4 rounded-md bg-zinc-900 border border-zinc-800 mb-6 text-center text-zinc-400">
+          <div className="mb-6 rounded-md border border-zinc-800 bg-zinc-900 p-4 text-center text-zinc-400">
             {statusMessage}
           </div>
         ) : null}
 
         {isLoading ? (
-          <div className="grid grid-cols-[minmax(280px,360px)_1fr] gap-6 items-start">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl h-[calc(100vh-12rem)] overflow-hidden flex flex-col">
-              <div className="px-4 py-3 border-b border-zinc-800">
-                <div className="h-4 bg-zinc-800 rounded animate-pulse w-20" />
+          <div className="grid grid-cols-[minmax(280px,360px)_1fr] items-start gap-6">
+            <div className="flex h-[calc(100vh-12rem)] flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
+              <div className="border-b border-zinc-800 px-4 py-3">
+                <div className="h-4 w-20 animate-pulse rounded bg-zinc-800" />
               </div>
               <div className="flex-1 overflow-hidden">
                 {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="py-3 px-4 flex items-center gap-3 border-b border-zinc-800/50">
-                    <div className="w-6 h-6 rounded-full bg-zinc-800 animate-pulse shrink-0" />
-                    <div className="h-3 bg-zinc-800 rounded animate-pulse flex-1" />
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 border-b border-zinc-800/50 px-4 py-3"
+                  >
+                    <div className="h-6 w-6 shrink-0 animate-pulse rounded-full bg-zinc-800" />
+                    <div className="h-3 flex-1 animate-pulse rounded bg-zinc-800" />
                   </div>
                 ))}
               </div>
             </div>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-zinc-800 flex gap-2">
-                <div className="h-7 w-16 bg-zinc-800 rounded animate-pulse" />
-                <div className="h-7 w-16 bg-zinc-800 rounded animate-pulse" />
+            <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
+              <div className="flex gap-2 border-b border-zinc-800 px-4 py-3">
+                <div className="h-7 w-16 animate-pulse rounded bg-zinc-800" />
+                <div className="h-7 w-16 animate-pulse rounded bg-zinc-800" />
               </div>
-              <div className="bg-black min-h-[400px] h-[calc(100vh-16rem)]" />
+              <div className="h-[calc(100vh-16rem)] min-h-[400px] bg-black" />
             </div>
           </div>
         ) : (
-        <div className="grid grid-cols-[minmax(280px,360px)_1fr] gap-6 items-start">
-          <PlaylistPanel
-            videos={videos}
-            currentVideoId={currentVideoId}
-            onSelect={handleSelect}
-            isWatched={isWatched}
-            isNew={isNew}
-          />
-          <VideoPlayerPane
-            video={currentVideo}
-            canGoPrevious={currentIndex > 0}
-            canGoNext={currentIndex >= 0 && currentIndex < videos.length - 1}
-            onPrevious={goPrevious}
-            onNext={goNext}
-            initialTime={currentVideo ? getInitialTime(currentVideo.id) : undefined}
-            onTimeUpdate={handleTimeUpdate}
-            onEnded={goNext}
-          />
-        </div>
+          <div className="grid grid-cols-[minmax(280px,360px)_1fr] items-start gap-6">
+            <PlaylistPanel
+              videos={videos}
+              currentVideoId={currentVideoId}
+              onSelect={handleSelect}
+              isWatched={isWatched}
+              isNew={isNew}
+            />
+            <VideoPlayerPane
+              video={currentVideo}
+              canGoPrevious={currentIndex > 0}
+              canGoNext={currentIndex >= 0 && currentIndex < videos.length - 1}
+              onPrevious={goPrevious}
+              onNext={goNext}
+              initialTime={currentVideo ? getInitialTime(currentVideo.id) : undefined}
+              onTimeUpdate={handleTimeUpdate}
+              onEnded={goNext}
+            />
+          </div>
         )}
       </main>
     </div>

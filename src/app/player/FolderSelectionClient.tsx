@@ -88,9 +88,7 @@ export function FolderSelectionClient({
 
   const displayedFolders = useMemo(() => {
     const query = search.toLowerCase();
-    const filtered = folders.filter((f) =>
-      (f.name ?? f.folderId).toLowerCase().includes(query),
-    );
+    const filtered = folders.filter((f) => (f.name ?? f.folderId).toLowerCase().includes(query));
     return sortByNaturalName(
       filtered.map((f) => ({ ...f, name: f.name ?? f.folderId })),
       sortDirection,
@@ -98,20 +96,16 @@ export function FolderSelectionClient({
   }, [folders, search, sortDirection]);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-screen flex-col">
       <AppHeader userImage={userImage} userName={userName} showAdminLink={isAdmin} />
 
-      <main className="flex-1 p-8 max-w-[1366px] w-full mx-auto">
-        <div className="flex items-center justify-between gap-4 mb-6">
-          <h2 className="text-xl font-semibold tracking-tight">
-            Select a Folder
-          </h2>
+      <main className="mx-auto w-full max-w-[1366px] flex-1 p-8">
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <h2 className="text-xl font-semibold tracking-tight">Select a Folder</h2>
           <button
             type="button"
-            onClick={() =>
-              setSortDirection((current) => (current === "asc" ? "desc" : "asc"))
-            }
-            className="inline-flex items-center justify-center text-sm font-medium rounded-md border border-zinc-800 bg-zinc-900 text-zinc-50 cursor-pointer transition-all duration-200 hover:bg-zinc-800 hover:border-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 gap-2 py-1.5 px-3"
+            onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
+            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-50 transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
           >
             <svg
               width="14"
@@ -137,39 +131,39 @@ export function FolderSelectionClient({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search folders…"
-            className="w-full sm:w-64 bg-zinc-900 border border-zinc-800 rounded-md px-3 py-1.5 text-sm text-zinc-50 placeholder:text-zinc-500 focus:outline-2 focus:outline-blue-500"
+            className="w-full rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-50 placeholder:text-zinc-500 focus:outline-2 focus:outline-blue-500 sm:w-64"
           />
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-6 h-6 rounded-full bg-zinc-800 animate-pulse shrink-0" />
-                  <div className="h-4 bg-zinc-800 rounded animate-pulse flex-1" />
+              <div key={i} className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+                <div className="mb-3 flex items-center gap-3">
+                  <div className="h-6 w-6 shrink-0 animate-pulse rounded-full bg-zinc-800" />
+                  <div className="h-4 flex-1 animate-pulse rounded bg-zinc-800" />
                 </div>
-                <div className="h-3 bg-zinc-800 rounded animate-pulse w-2/3" />
+                <div className="h-3 w-2/3 animate-pulse rounded bg-zinc-800" />
               </div>
             ))}
           </div>
         ) : statusMessage ? (
-          <div className="p-4 rounded-md bg-zinc-900 border border-zinc-800 text-center text-zinc-400">
+          <div className="rounded-md border border-zinc-800 bg-zinc-900 p-4 text-center text-zinc-400">
             {statusMessage}
           </div>
         ) : displayedFolders.length === 0 ? (
-          <div className="p-4 rounded-md bg-zinc-900 border border-zinc-800 text-center text-zinc-400">
+          <div className="rounded-md border border-zinc-800 bg-zinc-900 p-4 text-center text-zinc-400">
             No folders match your search.
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {displayedFolders.map((folder) => (
               <Link
                 key={folder.id}
                 href={`/player/${folder.folderId}`}
-                className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 transition-all duration-200 hover:border-blue-500/50 hover:bg-zinc-800/50"
+                className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 transition-all duration-200 hover:border-blue-500/50 hover:bg-zinc-800/50"
               >
-                <div className="flex items-center gap-3 mb-3">
+                <div className="mb-3 flex items-center gap-3">
                   <svg
                     width="24"
                     height="24"
@@ -179,22 +173,20 @@ export function FolderSelectionClient({
                     strokeWidth="1.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="text-blue-500 shrink-0"
+                    className="shrink-0 text-blue-500"
                   >
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                   </svg>
-                  <h3 className="font-medium text-zinc-50 truncate">
+                  <h3 className="truncate font-medium text-zinc-50">
                     {folder.name ?? folder.folderId}
                   </h3>
                   {newFolderIds.has(folder.folderId) && (
-                    <span className="text-xs font-medium text-blue-400 bg-blue-400/10 rounded px-1.5 py-0.5 shrink-0">
+                    <span className="shrink-0 rounded bg-blue-400/10 px-1.5 py-0.5 text-xs font-medium text-blue-400">
                       NEW
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-zinc-500 truncate">
-                  {folder.folderId}
-                </p>
+                <p className="truncate text-xs text-zinc-500">{folder.folderId}</p>
               </Link>
             ))}
           </div>

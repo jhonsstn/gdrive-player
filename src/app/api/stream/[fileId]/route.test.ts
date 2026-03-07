@@ -62,11 +62,7 @@ describe("/api/stream/[fileId]", () => {
       { params: Promise.resolve({ fileId: "file123" }) },
     );
 
-    expect(mocks.streamDriveFile).toHaveBeenCalledWith(
-      "token",
-      "file123",
-      "bytes=0-4",
-    );
+    expect(mocks.streamDriveFile).toHaveBeenCalledWith("token", "file123", "bytes=0-4");
     expect(response.status).toBe(206);
     expect(response.headers.get("content-range")).toBe("bytes 0-4/10");
     expect(await response.text()).toBe("chunk");

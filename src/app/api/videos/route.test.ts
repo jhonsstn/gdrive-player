@@ -83,9 +83,7 @@ describe("/api/videos", () => {
         },
       ]);
 
-    const response = await GET(
-      new Request("http://localhost/api/videos?sort=asc"),
-    );
+    const response = await GET(new Request("http://localhost/api/videos?sort=asc"));
 
     expect(response.status).toBe(200);
     expect(mocks.listFolderVideos).toHaveBeenCalledTimes(2);
@@ -95,9 +93,7 @@ describe("/api/videos", () => {
     };
 
     expect(payload.videos.map((video) => video.id)).toEqual(["v2", "v10"]);
-    expect(payload.videos.every((video) => video.mimeType.startsWith("video/"))).toBe(
-      true,
-    );
+    expect(payload.videos.every((video) => video.mimeType.startsWith("video/"))).toBe(true);
     expect(payload.videos.map((video) => video.sourceUrl)).toEqual([
       "https://drive.google.com/drive/folders/folder_1",
       "https://drive.google.com/drive/folders/folder_2",
@@ -124,9 +120,7 @@ describe("/api/videos", () => {
       },
     ]);
 
-    const response = await GET(
-      new Request("http://localhost/api/videos?folderId=folder_1"),
-    );
+    const response = await GET(new Request("http://localhost/api/videos?folderId=folder_1"));
 
     expect(response.status).toBe(200);
     expect(mocks.findMany).toHaveBeenCalledWith({

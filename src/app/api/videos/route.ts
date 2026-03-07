@@ -14,10 +14,7 @@ export async function GET(request: Request) {
   }
 
   if (!session.accessToken) {
-    return NextResponse.json(
-      { error: "Missing Google Drive access token" },
-      { status: 401 },
-    );
+    return NextResponse.json({ error: "Missing Google Drive access token" }, { status: 401 });
   }
 
   const accessToken = session.accessToken;
@@ -57,10 +54,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ videos, sort: sortDirection });
   } catch (error) {
     if (error instanceof DriveRequestError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status },
-      );
+      return NextResponse.json({ error: error.message }, { status: error.status });
     }
 
     throw error;

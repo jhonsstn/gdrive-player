@@ -47,9 +47,7 @@ export function tryParseDriveFolderId(input: string): string | null {
     return null;
   }
 
-  const maybeId = isValidDriveId(normalized)
-    ? normalized
-    : extractFolderIdFromDriveUrl(normalized);
+  const maybeId = isValidDriveId(normalized) ? normalized : extractFolderIdFromDriveUrl(normalized);
 
   if (!maybeId) {
     return null;

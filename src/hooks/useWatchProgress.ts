@@ -10,10 +10,7 @@ type ProgressEntry = {
 
 type ProgressMap = Record<string, ProgressEntry>;
 
-export type VideoMeta = Record<
-  string,
-  { folderId: string; modifiedTime: string | null }
->;
+export type VideoMeta = Record<string, { folderId: string; modifiedTime: string | null }>;
 
 const FLUSH_INTERVAL_MS = 8_000;
 const WATCHED_THRESHOLD = 0.9;
@@ -37,9 +34,7 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
 
     let cancelled = false;
     async function fetchProgress() {
-      const response = await fetch(
-        `/api/progress?videoIds=${videoIds.join(",")}`,
-      );
+      const response = await fetch(`/api/progress?videoIds=${videoIds.join(",")}`);
       if (!response.ok || cancelled) return;
       const data = (await response.json()) as { progress: ProgressMap };
       if (!cancelled) {
@@ -67,9 +62,7 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
 
     let cancelled = false;
     async function fetchLastSeen() {
-      const response = await fetch(
-        `/api/progress/last-seen?folderIds=${folderIds.join(",")}`,
-      );
+      const response = await fetch(`/api/progress/last-seen?folderIds=${folderIds.join(",")}`);
       if (!response.ok || cancelled) return;
       const data = (await response.json()) as {
         lastSeen: Record<string, string>;

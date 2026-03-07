@@ -30,9 +30,7 @@ describe("/api/progress", () => {
     it("returns 401 for unauthenticated users", async () => {
       mocks.auth.mockResolvedValue(null);
 
-      const request = new Request(
-        "http://localhost/api/progress?videoIds=a,b",
-      );
+      const request = new Request("http://localhost/api/progress?videoIds=a,b");
       const response = await GET(request as never);
 
       expect(response.status).toBe(401);
@@ -64,9 +62,7 @@ describe("/api/progress", () => {
         },
       ]);
 
-      const request = new Request(
-        "http://localhost/api/progress?videoIds=vid1,vid2",
-      );
+      const request = new Request("http://localhost/api/progress?videoIds=vid1,vid2");
       const response = await GET(request as never);
 
       expect(response.status).toBe(200);

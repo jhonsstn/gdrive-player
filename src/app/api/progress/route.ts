@@ -19,10 +19,7 @@ export async function GET(request: Request) {
     where: { userEmail: session.user.email, videoId: { in: ids } },
   });
 
-  const progress: Record<
-    string,
-    { currentTime: number; duration: number; watched: boolean }
-  > = {};
+  const progress: Record<string, { currentTime: number; duration: number; watched: boolean }> = {};
   for (const row of rows) {
     progress[row.videoId] = {
       currentTime: row.currentTime,
@@ -41,14 +38,13 @@ export async function PUT(request: Request) {
   }
 
   const body = await request.json();
-  const { videoId, currentTime, duration, folderId, videoModifiedTime } =
-    body as {
-      videoId?: string;
-      currentTime?: number;
-      duration?: number;
-      folderId?: string;
-      videoModifiedTime?: string;
-    };
+  const { videoId, currentTime, duration, folderId, videoModifiedTime } = body as {
+    videoId?: string;
+    currentTime?: number;
+    duration?: number;
+    folderId?: string;
+    videoModifiedTime?: string;
+  };
 
   if (!videoId || currentTime == null || !duration || duration <= 0) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });

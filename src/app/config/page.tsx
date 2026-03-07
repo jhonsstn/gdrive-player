@@ -18,18 +18,34 @@ export default async function ConfigPage() {
 
   if (!isAdminSession(session)) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="flex min-h-screen flex-col">
         <AppHeader userImage={session.user.image} userName={session.user.name} />
-        <main className="px-8 py-16 flex justify-center">
-          <div className="bg-zinc-900 border border-red-500/10 rounded-xl shadow-sm max-w-[500px] w-full text-center px-8 py-12">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-red-500 mb-6 mx-auto" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+        <main className="flex justify-center px-8 py-16">
+          <div className="w-full max-w-[500px] rounded-xl border border-red-500/10 bg-zinc-900 px-8 py-12 text-center shadow-sm">
+            <svg
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              className="mx-auto mb-6 text-red-500"
+              strokeWidth="1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="12" y1="8" x2="12" y2="12"></line>
               <line x1="12" y1="16" x2="12.01" y2="16"></line>
             </svg>
-            <h2 className="text-xl font-semibold tracking-tight mb-2">Access Denied</h2>
-            <p className="text-zinc-400 mb-8">Your account ({session.user.email}) is not authorized to access the admin configuration.</p>
-            <Link href="/player" className="inline-flex py-2 px-4 bg-zinc-800 text-zinc-50 rounded-md font-medium">
+            <h2 className="mb-2 text-xl font-semibold tracking-tight">Access Denied</h2>
+            <p className="mb-8 text-zinc-400">
+              Your account ({session.user.email}) is not authorized to access the admin
+              configuration.
+            </p>
+            <Link
+              href="/player"
+              className="inline-flex rounded-md bg-zinc-800 px-4 py-2 font-medium text-zinc-50"
+            >
               Return to Player
             </Link>
           </div>
@@ -43,18 +59,16 @@ export default async function ConfigPage() {
   });
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-screen flex-col">
       <AppHeader userImage={session.user.image} userName={session.user.name} />
-      <main className="px-8 py-12 max-w-[1366px] w-full mx-auto">
-        <div className="mb-8 flex justify-between items-end">
+      <main className="mx-auto w-full max-w-[1366px] px-8 py-12">
+        <div className="mb-8 flex items-end justify-between">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight">Drive Folders</h2>
-            <p className="text-zinc-400 mt-2">
-              Manage the folders synced to the video player.
-            </p>
+            <p className="mt-2 text-zinc-400">Manage the folders synced to the video player.</p>
           </div>
-          <div className="py-1 px-3 bg-zinc-800 rounded-md text-sm text-zinc-400 flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+          <div className="flex items-center gap-2 rounded-md bg-zinc-800 px-3 py-1 text-sm text-zinc-400">
+            <div className="h-2 w-2 rounded-full bg-blue-500"></div>
             {session.user.email}
           </div>
         </div>
