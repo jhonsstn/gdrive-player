@@ -27,6 +27,7 @@ type VjsPlayer = {
   paused: () => boolean;
   play: () => Promise<void> | undefined;
   pause: () => void;
+  src: (sources: { src: string; type: string }) => void;
   on: (event: string, handler: () => void) => void;
   off: (event: string, handler: () => void) => void;
   dispose: () => void;
@@ -55,12 +56,14 @@ export function VideoPlayerPane({
   const initialTimeRef = useRef(initialTime);
   const onNextRef = useRef(onNext);
   const nextShownRef = useRef(false);
+  const videoIdRef = useRef(video?.id);
 
   useEffect(() => {
     onTimeUpdateRef.current = onTimeUpdate;
     onEndedRef.current = onEnded;
     initialTimeRef.current = initialTime;
     onNextRef.current = onNext;
+    videoIdRef.current = video?.id;
   });
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -91,13 +94,14 @@ export function VideoPlayerPane({
     }
   }, []);
 
+  // Create the player once when the container mounts
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || !video) return;
+    if (!container) return;
 
     let disposed = false;
 
-    async function setupPlayer(targetContainer: HTMLDivElement, videoId: string) {
+    async function initPlayer(targetContainer: HTMLDivElement) {
       try {
         const vjsModule = await import("video.js");
         const vjsRaw = typeof vjsModule === "function"
@@ -114,8 +118,8 @@ export function VideoPlayerPane({
         const VjsButton = vjsAny.getComponent("Button");
         const nextSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>`;
         class NextButton extends VjsButton {
-          constructor(player: unknown, options: unknown) {
-            super(player, options);
+          constructor(p: unknown, options: unknown) {
+            super(p, options);
             const self = this as unknown as { controlText: (t: string) => void; hide: () => void; el: () => HTMLElement };
             self.controlText("Next");
             self.hide();
@@ -166,10 +170,14 @@ export function VideoPlayerPane({
               "fullscreenToggle",
             ],
           },
-          sources: [{ src: `/api/stream/${videoId}`, type: "video/mp4" }],
         } as Record<string, unknown>);
 
         playerRef.current = player;
+
+        // Load initial source if a video is already selected
+        if (videoIdRef.current) {
+          player.src({ src: `/api/stream/${videoIdRef.current}`, type: "video/mp4" });
+        }
 
         player.on("loadedmetadata", function handleLoadedMetadata() {
           const t = initialTimeRef.current;
@@ -206,7 +214,7 @@ export function VideoPlayerPane({
       }
     }
 
-    void setupPlayer(container, video.id);
+    void initPlayer(container);
 
     return () => {
       disposed = true;
@@ -220,7 +228,19 @@ export function VideoPlayerPane({
       }
       container.innerHTML = "";
     };
-  }, [video?.id, video, handleKeyDown]);
+  }, [handleKeyDown]);
+
+  // Swap source when video changes (keeps player alive, preserves fullscreen)
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player || player.isDisposed() || !video) return;
+
+    nextShownRef.current = false;
+    const nextBtn = player.controlBar.getChild("NextButton");
+    if (nextBtn) nextBtn.hide();
+
+    player.src({ src: `/api/stream/${video.id}`, type: "video/mp4" });
+  }, [video?.id]);
 
   return (
     <section className="flex flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-0 shadow-sm">
