@@ -42,13 +42,14 @@ export function PlayerClient({
   const [videos, setVideos] = useState<PlayerVideo[]>([]);
   const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [isLoading, setIsLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadVideos() {
-      setStatusMessage("Loading videos...");
+      setIsLoading(true);
 
       const response = await fetch(`/api/videos?sort=${sortDirection}&folderId=${encodeURIComponent(folderId)}`);
       const payload = (await response.json()) as VideosApiResponse;
@@ -60,6 +61,7 @@ export function PlayerClient({
       if (!response.ok) {
         setVideos([]);
         setCurrentVideoId(null);
+        setIsLoading(false);
         setStatusMessage(payload.error ?? "Failed to load videos");
         return;
       }
@@ -72,6 +74,7 @@ export function PlayerClient({
 
         return payload.videos[0]?.id ?? null;
       });
+      setIsLoading(false);
       setStatusMessage(payload.videos.length === 0 ? "No videos found." : null);
     }
 
@@ -169,6 +172,30 @@ export function PlayerClient({
           </div>
         ) : null}
 
+        {isLoading ? (
+          <div className="grid grid-cols-[minmax(280px,360px)_1fr] gap-6 items-start">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl h-[calc(100vh-12rem)] overflow-hidden flex flex-col">
+              <div className="px-4 py-3 border-b border-zinc-800">
+                <div className="h-4 bg-zinc-800 rounded animate-pulse w-20" />
+              </div>
+              <div className="flex-1 overflow-hidden">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="py-3 px-4 flex items-center gap-3 border-b border-zinc-800/50">
+                    <div className="w-6 h-6 rounded-full bg-zinc-800 animate-pulse shrink-0" />
+                    <div className="h-3 bg-zinc-800 rounded animate-pulse flex-1" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-zinc-800 flex gap-2">
+                <div className="h-7 w-16 bg-zinc-800 rounded animate-pulse" />
+                <div className="h-7 w-16 bg-zinc-800 rounded animate-pulse" />
+              </div>
+              <div className="bg-black min-h-[400px] h-[calc(100vh-16rem)]" />
+            </div>
+          </div>
+        ) : (
         <div className="grid grid-cols-[minmax(280px,360px)_1fr] gap-6 items-start">
           <PlaylistPanel
             videos={videos}
@@ -188,6 +215,7 @@ export function PlayerClient({
             onEnded={goNext}
           />
         </div>
+        )}
       </main>
     </div>
   );

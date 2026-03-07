@@ -29,6 +29,7 @@ export function FolderSelectionClient({
   isAdmin = false,
 }: FolderSelectionClientProps) {
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [search, setSearch] = useState("");
@@ -38,7 +39,7 @@ export function FolderSelectionClient({
     let cancelled = false;
 
     async function loadFolders() {
-      setStatusMessage("Loading folders...");
+      setIsLoading(true);
 
       const response = await fetch("/api/folders");
       const payload = (await response.json()) as FoldersApiResponse;
@@ -49,11 +50,13 @@ export function FolderSelectionClient({
 
       if (!response.ok) {
         setFolders([]);
+        setIsLoading(false);
         setStatusMessage(payload.error ?? "Failed to load folders");
         return;
       }
 
       setFolders(payload.folders);
+      setIsLoading(false);
       setStatusMessage(payload.folders.length === 0 ? "No folders configured." : null);
 
       if (payload.folders.length > 0) {
@@ -138,7 +141,19 @@ export function FolderSelectionClient({
           />
         </div>
 
-        {statusMessage ? (
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-6 h-6 rounded-full bg-zinc-800 animate-pulse shrink-0" />
+                  <div className="h-4 bg-zinc-800 rounded animate-pulse flex-1" />
+                </div>
+                <div className="h-3 bg-zinc-800 rounded animate-pulse w-2/3" />
+              </div>
+            ))}
+          </div>
+        ) : statusMessage ? (
           <div className="p-4 rounded-md bg-zinc-900 border border-zinc-800 text-center text-zinc-400">
             {statusMessage}
           </div>
