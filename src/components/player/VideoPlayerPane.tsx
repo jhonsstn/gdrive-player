@@ -108,7 +108,7 @@ export function VideoPlayerPane({
 
         const player = videojs(videoEl, {
           controls: true,
-          autoplay: true,
+          autoplay: false,
           preload: "metadata",
           fluid: false,
           fill: true,
