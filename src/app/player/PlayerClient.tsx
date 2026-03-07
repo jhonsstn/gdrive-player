@@ -238,13 +238,13 @@ export function PlayerClient({
             />
             <VideoPlayerPane
               video={currentVideo}
-              canGoPrevious={currentIndex > 0}
-              canGoNext={currentIndex >= 0 && currentIndex < videos.length - 1}
-              onPrevious={goPrevious}
-              onNext={goNext}
+              canGoPrevious={currentIndex >= 0 && currentIndex < videos.length - 1}
+              canGoNext={currentIndex > 0}
+              onPrevious={goNext}
+              onNext={goPrevious}
               initialTime={currentVideo ? getInitialTime(currentVideo.id) : undefined}
               onTimeUpdate={handleTimeUpdate}
-              onEnded={goNext}
+              onEnded={goPrevious}
             />
           </div>
         )}
