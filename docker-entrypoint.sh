@@ -14,10 +14,10 @@ else
 fi
 
 # Regenerate Prisma client for the chosen provider
-pnpm exec prisma generate
+pnpm dlx prisma generate
 
 # Sync schema to database (creates tables if missing)
-pnpm exec prisma db push --url "$DATABASE_URL" --accept-data-loss
+pnpm dlx prisma db push --url "$DATABASE_URL" --accept-data-loss
 
 echo "Starting application..."
 exec node server.js
