@@ -14,7 +14,7 @@ Next.js app for browsing and streaming videos from configured Google Drive folde
 ## Prerequisites
 
 - Node.js 20+
-- npm
+- pnpm
 - Google Cloud project with OAuth credentials
 
 ## 1) Configure Google OAuth
@@ -45,7 +45,7 @@ Set values in `.env`:
 ## 3) Install dependencies
 
 ```bash
-npm install
+pnpm install
 ```
 
 ## 4) Initialize database (Prisma + SQLite)
@@ -53,20 +53,20 @@ npm install
 For first local setup:
 
 ```bash
-npx prisma migrate dev --name init
-npx prisma generate
+pnpm prisma migrate dev --name init
+pnpm prisma generate
 ```
 
 For normal development after pulling new migrations:
 
 ```bash
-npx prisma migrate dev
+pnpm prisma migrate dev
 ```
 
 ## 5) Start the app
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 Open:
@@ -148,7 +148,7 @@ docker compose up -d --build
 ## Useful commands
 
 ```bash
-npm run lint
-npm run typecheck
-npm run test
+pnpm lint
+pnpm typecheck
+pnpm test
 ```
