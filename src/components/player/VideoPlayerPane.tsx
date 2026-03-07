@@ -31,6 +31,9 @@ type VjsPlayer = {
   off: (event: string, handler: () => void) => void;
   dispose: () => void;
   isDisposed: () => boolean;
+  controlBar: {
+    getChild: (name: string) => { show: () => void; hide: () => void } | undefined;
+  };
 };
 
 type VjsFactory = (el: HTMLVideoElement, opts?: Record<string, unknown>) => VjsPlayer;
@@ -50,11 +53,14 @@ export function VideoPlayerPane({
   const onTimeUpdateRef = useRef(onTimeUpdate);
   const onEndedRef = useRef(onEnded);
   const initialTimeRef = useRef(initialTime);
+  const onNextRef = useRef(onNext);
+  const nextShownRef = useRef(false);
 
   useEffect(() => {
     onTimeUpdateRef.current = onTimeUpdate;
     onEndedRef.current = onEnded;
     initialTimeRef.current = initialTime;
+    onNextRef.current = onNext;
   });
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -94,10 +100,40 @@ export function VideoPlayerPane({
     async function setupPlayer(targetContainer: HTMLDivElement, videoId: string) {
       try {
         const vjsModule = await import("video.js");
-        const videojs = (typeof vjsModule === "function"
+        const vjsRaw = typeof vjsModule === "function"
           ? vjsModule
           : ((vjsModule as unknown as { default: unknown }).default ??
-            vjsModule)) as unknown as VjsFactory;
+            vjsModule);
+        const videojs = vjsRaw as unknown as VjsFactory;
+
+        // Register custom NextButton component (idempotent)
+        const vjsAny = vjsRaw as unknown as {
+          getComponent: (name: string) => new (...args: unknown[]) => Record<string, unknown>;
+          registerComponent: (name: string, comp: unknown) => void;
+        };
+        const VjsButton = vjsAny.getComponent("Button");
+        const nextSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>`;
+        class NextButton extends VjsButton {
+          constructor(player: unknown, options: unknown) {
+            super(player, options);
+            const self = this as unknown as { controlText: (t: string) => void; hide: () => void; el: () => HTMLElement };
+            self.controlText("Next");
+            self.hide();
+            const btnEl = self.el();
+            if (btnEl) {
+              const icon = btnEl.querySelector(".vjs-icon-placeholder");
+              if (icon) icon.innerHTML = nextSvg;
+            }
+          }
+          handleClick() {
+            onNextRef.current();
+          }
+          buildCSSClass() {
+            const parentClass = (VjsButton.prototype as unknown as { buildCSSClass: () => string }).buildCSSClass.call(this);
+            return `vjs-next-button ${parentClass}`;
+          }
+        }
+        vjsAny.registerComponent("NextButton", NextButton);
 
         if (disposed) return;
 
@@ -117,6 +153,18 @@ export function VideoPlayerPane({
             pictureInPictureToggle: true,
             fullscreenToggle: true,
             volumePanel: { inline: true },
+            children: [
+              "playToggle",
+              "volumePanel",
+              "currentTimeDisplay",
+              "timeDivider",
+              "durationDisplay",
+              "progressControl",
+              "playbackRateMenuButton",
+              "NextButton",
+              "pictureInPictureToggle",
+              "fullscreenToggle",
+            ],
           },
           sources: [{ src: `/api/stream/${videoId}`, type: "video/mp4" }],
         } as Record<string, unknown>);
@@ -131,7 +179,21 @@ export function VideoPlayerPane({
         });
 
         player.on("timeupdate", function handleTimeUpdate() {
-          onTimeUpdateRef.current?.(player.currentTime(), player.duration());
+          const ct = player.currentTime();
+          const dur = player.duration();
+          onTimeUpdateRef.current?.(ct, dur);
+
+          if (dur > 0) {
+            const past90 = ct / dur >= 0.9;
+            if (past90 !== nextShownRef.current) {
+              nextShownRef.current = past90;
+              const nextBtn = player.controlBar.getChild("NextButton");
+              if (nextBtn) {
+                if (past90) nextBtn.show();
+                else nextBtn.hide();
+              }
+            }
+          }
         });
 
         player.on("ended", function handleEnded() {
@@ -148,6 +210,7 @@ export function VideoPlayerPane({
 
     return () => {
       disposed = true;
+      nextShownRef.current = false;
       document.removeEventListener("keydown", handleKeyDown);
       if (playerRef.current) {
         if (!playerRef.current.isDisposed()) {

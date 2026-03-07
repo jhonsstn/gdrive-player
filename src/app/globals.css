@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+.video-js .vjs-next-button.vjs-control {
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;
