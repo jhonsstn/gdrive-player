@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { DriveRequestError, listFolderVideos } from "@/lib/drive";
+import { DriveRequestError, listFolderVideos, listFolderVideosPage } from "@/lib/drive";
 import { isAllowedVideoMimeType } from "@/lib/video-mime";
 import { parseSortDirection, sortByNaturalName } from "@/lib/sort";
 
@@ -21,6 +21,8 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const sortDirection = parseSortDirection(url.searchParams.get("sort"));
   const filterFolderId = url.searchParams.get("folderId");
+  const pageToken = url.searchParams.get("pageToken") ?? undefined;
+  const pageSize = Math.min(Number(url.searchParams.get("pageSize") ?? 50), 200);
 
   const folders = filterFolderId
     ? await db.configuredFolder.findMany({
@@ -32,6 +34,17 @@ export async function GET(request: Request) {
       });
 
   try {
+    if (filterFolderId && folders.length === 1) {
+      const folder = folders[0]!;
+      const { videos: pageVideos, nextPageToken } = await listFolderVideosPage(
+        accessToken,
+        folder.folderId,
+        { pageToken, pageSize, sortDirection },
+      );
+      const videos = pageVideos.map((video) => ({ ...video, sourceUrl: folder.sourceUrl }));
+      return NextResponse.json({ videos, sort: sortDirection, nextPageToken });
+    }
+
     const groupedVideos = await Promise.all(
       folders.map(async (folder) => ({
         folder,

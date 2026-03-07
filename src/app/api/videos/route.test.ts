@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   findMany: vi.fn(),
   listFolderVideos: vi.fn(),
+  listFolderVideosPage: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({
@@ -28,6 +29,7 @@ vi.mock("@/lib/drive", () => ({
     }
   },
   listFolderVideos: mocks.listFolderVideos,
+  listFolderVideosPage: mocks.listFolderVideosPage,
 }));
 
 import { GET } from "@/app/api/videos/route";
@@ -110,15 +112,18 @@ describe("/api/videos", () => {
       { folderId: "folder_1", sourceUrl: "https://drive.google.com/drive/folders/folder_1" },
     ]);
 
-    mocks.listFolderVideos.mockResolvedValueOnce([
-      {
-        id: "v1",
-        name: "Video 1",
-        mimeType: "video/mp4",
-        size: null,
-        folderId: "folder_1",
-      },
-    ]);
+    mocks.listFolderVideosPage.mockResolvedValueOnce({
+      videos: [
+        {
+          id: "v1",
+          name: "Video 1",
+          mimeType: "video/mp4",
+          size: null,
+          folderId: "folder_1",
+        },
+      ],
+      nextPageToken: undefined,
+    });
 
     const response = await GET(new Request("http://localhost/api/videos?folderId=folder_1"));
 

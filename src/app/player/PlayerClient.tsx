@@ -21,6 +21,7 @@ type PlayerVideo = {
 type VideosApiResponse = {
   videos: PlayerVideo[];
   sort: SortDirection;
+  nextPageToken?: string;
   error?: string;
 };
 
@@ -44,12 +45,15 @@ export function PlayerClient({
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [isLoading, setIsLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [nextPageToken, setNextPageToken] = useState<string | undefined>();
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadVideos() {
       setIsLoading(true);
+      setNextPageToken(undefined);
 
       const response = await fetch(
         `/api/videos?sort=${sortDirection}&folderId=${encodeURIComponent(folderId)}`,
@@ -69,6 +73,7 @@ export function PlayerClient({
       }
 
       setVideos(payload.videos);
+      setNextPageToken(payload.nextPageToken);
       setCurrentVideoId((current) => {
         if (current && payload.videos.some((video) => video.id === current)) {
           return current;
@@ -86,6 +91,25 @@ export function PlayerClient({
       cancelled = true;
     };
   }, [sortDirection, folderId]);
+
+  async function loadMore() {
+    if (!nextPageToken || isLoadingMore) return;
+    setIsLoadingMore(true);
+
+    try {
+      const response = await fetch(
+        `/api/videos?sort=${sortDirection}&folderId=${encodeURIComponent(folderId)}&pageToken=${encodeURIComponent(nextPageToken)}`,
+      );
+      const payload = (await response.json()) as VideosApiResponse;
+
+      if (response.ok) {
+        setVideos((prev) => [...prev, ...payload.videos]);
+        setNextPageToken(payload.nextPageToken);
+      }
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }
 
   const videoIds = useMemo(() => videos.map((v) => v.id), [videos]);
 
@@ -208,6 +232,9 @@ export function PlayerClient({
               onSelect={handleSelect}
               isWatched={isWatched}
               isNew={isNew}
+              hasMore={!!nextPageToken}
+              onLoadMore={loadMore}
+              isLoadingMore={isLoadingMore}
             />
             <VideoPlayerPane
               video={currentVideo}

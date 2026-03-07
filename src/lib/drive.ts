@@ -140,6 +140,53 @@ export async function listFolderVideos(
   return videos;
 }
 
+export async function listFolderVideosPage(
+  accessToken: string,
+  folderId: string,
+  options: { pageToken?: string; pageSize?: number; sortDirection?: "asc" | "desc" },
+): Promise<{ videos: DriveVideoFile[]; nextPageToken: string | undefined }> {
+  const { pageToken, pageSize = 50, sortDirection = "desc" } = options;
+  const mimeTypeFilter = [...ALLOWED_VIDEO_MIME_TYPES].map((m) => `mimeType='${m}'`).join(" or ");
+  const search = new URLSearchParams({
+    q: `'${folderId}' in parents and trashed = false and (${mimeTypeFilter})`,
+    fields: DRIVE_LIST_FIELDS,
+    pageSize: String(pageSize),
+    orderBy: sortDirection === "asc" ? "name" : "name desc",
+    supportsAllDrives: "true",
+    includeItemsFromAllDrives: "true",
+  });
+
+  if (pageToken) {
+    search.set("pageToken", pageToken);
+  }
+
+  const response = await fetch(`${DRIVE_API_BASE_URL}/files?${search.toString()}`, {
+    headers: makeAuthHeaders(accessToken),
+  });
+
+  if (!response.ok) {
+    const message = await parseDriveErrorMessage(response);
+    throw new DriveRequestError(message, response.status);
+  }
+
+  const page = (await response.json()) as DriveListResponse;
+  const videos: DriveVideoFile[] = [];
+
+  for (const file of page.files ?? []) {
+    if (!file.id || !file.name || !file.mimeType) continue;
+    videos.push({
+      id: file.id,
+      name: file.name,
+      mimeType: file.mimeType,
+      size: file.size ?? null,
+      folderId,
+      modifiedTime: file.modifiedTime ?? null,
+    });
+  }
+
+  return { videos, nextPageToken: page.nextPageToken };
+}
+
 export async function getLatestVideoModifiedTime(
   accessToken: string,
   folderId: string,

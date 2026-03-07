@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+
 import { parseEpisodeName } from "@/lib/episode-name";
 
 type PlaylistVideo = {
@@ -14,6 +18,9 @@ type PlaylistPanelProps = {
   onSelect: (videoId: string) => void;
   isWatched?: (videoId: string) => boolean;
   isNew?: (videoId: string) => boolean;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
+  isLoadingMore?: boolean;
 };
 
 export function PlaylistPanel({
@@ -22,7 +29,31 @@ export function PlaylistPanel({
   onSelect,
   isWatched,
   isNew,
+  hasMore,
+  onLoadMore,
+  isLoadingMore,
 }: PlaylistPanelProps) {
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!hasMore || !onLoadMore) return;
+
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !isLoadingMore) {
+          onLoadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, onLoadMore, isLoadingMore]);
+
   return (
     <aside className="flex h-[calc(100vh-12rem)] flex-col rounded-xl border border-zinc-800 bg-zinc-900 py-4 shadow-sm">
       <div className="mb-4 px-6">
@@ -103,6 +134,11 @@ export function PlaylistPanel({
             );
           })}
         </div>
+        {hasMore && (
+          <div ref={sentinelRef} className="py-3 text-center text-xs text-zinc-500">
+            {isLoadingMore ? "Loading…" : ""}
+          </div>
+        )}
       </div>
     </aside>
   );
