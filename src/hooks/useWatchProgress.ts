@@ -12,7 +12,7 @@ type ProgressMap = Record<string, ProgressEntry>;
 
 export type VideoMeta = Record<string, { folderId: string; modifiedTime: string | null; name: string }>;
 
-const FLUSH_INTERVAL_MS = 8_000;
+const FLUSH_INTERVAL_MS = 5_000;
 const WATCHED_THRESHOLD = 0.9;
 
 export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
