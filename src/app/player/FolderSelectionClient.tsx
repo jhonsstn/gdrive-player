@@ -32,6 +32,7 @@ export function FolderSelectionClient({
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [search, setSearch] = useState("");
+  const [newFolderIds, setNewFolderIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +55,25 @@ export function FolderSelectionClient({
 
       setFolders(payload.folders);
       setStatusMessage(payload.folders.length === 0 ? "No folders configured." : null);
+
+      if (payload.folders.length > 0) {
+        const ids = payload.folders.map((f) => f.folderId).join(",");
+        try {
+          const hasNewRes = await fetch(`/api/folders/has-new?folderIds=${ids}`);
+          if (hasNewRes.ok && !cancelled) {
+            const hasNewPayload = (await hasNewRes.json()) as { hasNew: Record<string, boolean> };
+            setNewFolderIds(
+              new Set(
+                Object.entries(hasNewPayload.hasNew)
+                  .filter(([, v]) => v)
+                  .map(([k]) => k),
+              ),
+            );
+          }
+        } catch {
+          // silently ignore
+        }
+      }
     }
 
     void loadFolders();
@@ -151,6 +171,11 @@ export function FolderSelectionClient({
                   <h3 className="font-medium text-zinc-50 truncate">
                     {folder.name ?? folder.folderId}
                   </h3>
+                  {newFolderIds.has(folder.folderId) && (
+                    <span className="text-xs font-medium text-blue-400 bg-blue-400/10 rounded px-1.5 py-0.5 shrink-0">
+                      NEW
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-zinc-500 truncate">
                   {folder.folderId}

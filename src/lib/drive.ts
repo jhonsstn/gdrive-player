@@ -1,4 +1,4 @@
-import { isAllowedVideoMimeType } from "@/lib/video-mime";
+import { ALLOWED_VIDEO_MIME_TYPES, isAllowedVideoMimeType } from "@/lib/video-mime";
 
 const DRIVE_API_BASE_URL = "https://www.googleapis.com/drive/v3";
 const DRIVE_LIST_FIELDS = "nextPageToken,files(id,name,mimeType,size,modifiedTime)";
@@ -141,6 +141,35 @@ export async function listFolderVideos(
   } while (pageToken);
 
   return videos;
+}
+
+export async function getLatestVideoModifiedTime(
+  accessToken: string,
+  folderId: string,
+): Promise<string | null> {
+  const mimeTypeFilter = [...ALLOWED_VIDEO_MIME_TYPES]
+    .map((m) => `mimeType='${m}'`)
+    .join(" or ");
+  const search = new URLSearchParams({
+    q: `'${folderId}' in parents and trashed=false and (${mimeTypeFilter})`,
+    orderBy: "modifiedTime desc",
+    pageSize: "1",
+    fields: "files(modifiedTime)",
+    supportsAllDrives: "true",
+    includeItemsFromAllDrives: "true",
+  });
+
+  const response = await fetch(`${DRIVE_API_BASE_URL}/files?${search.toString()}`, {
+    headers: makeAuthHeaders(accessToken),
+  });
+
+  if (!response.ok) {
+    const message = await parseDriveErrorMessage(response);
+    throw new DriveRequestError(message, response.status);
+  }
+
+  const data = (await response.json()) as { files?: Array<{ modifiedTime?: string }> };
+  return data.files?.[0]?.modifiedTime ?? null;
 }
 
 export async function streamDriveFile(
