@@ -48,7 +48,7 @@ export function AppHeader({ userImage, userName, showAdminLink = false }: AppHea
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
           </svg>
         </div>
-        <h1 className="text-xl font-semibold tracking-tight">Drive Player</h1>
+        <h1 className="text-xl font-semibold tracking-tight">GDrivePlayer</h1>
       </Link>
 
       <div className="flex items-center gap-3">

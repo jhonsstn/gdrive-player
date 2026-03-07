@@ -29,7 +29,7 @@ export default async function LoginPage() {
               <polygon points="5 3 19 12 5 21 5 3"></polygon>
             </svg>
           </div>
-          <h1 className="text-xl font-semibold tracking-tight">Drive Player</h1>
+          <h1 className="text-xl font-semibold tracking-tight">GDrivePlayer</h1>
         </div>
       </header>
 
@@ -52,7 +52,7 @@ export default async function LoginPage() {
             </svg>
           </div>
 
-          <h2 className="mb-2 text-xl font-semibold tracking-tight">Welcome to Drive Player</h2>
+          <h2 className="mb-2 text-xl font-semibold tracking-tight">Welcome to GDrivePlayer</h2>
           <p className="mb-10 text-[0.95rem] text-zinc-400">
             Sign in to access and manage your Google Drive videos.
           </p>

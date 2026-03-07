@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Google Drive Video Player",
+  title: "GDrivePlayer",
   description: "Private Google Drive video player",
 };
 
