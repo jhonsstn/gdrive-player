@@ -151,7 +151,7 @@ export async function listFolderVideosPage(
     q: `'${folderId}' in parents and trashed = false and (${mimeTypeFilter})`,
     fields: DRIVE_LIST_FIELDS,
     pageSize: String(pageSize),
-    orderBy: sortDirection === "asc" ? "name" : "name desc",
+    orderBy: sortDirection === "asc" ? "name_natural" : "name_natural desc",
     supportsAllDrives: "true",
     includeItemsFromAllDrives: "true",
   });
