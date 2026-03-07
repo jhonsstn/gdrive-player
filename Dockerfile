@@ -1,11 +1,12 @@
 FROM node:20-alpine AS base
+RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
 
 # --- Dependencies ---
 FROM base AS deps
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY prisma ./prisma/
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 # --- Builder ---
 FROM base AS builder
@@ -19,8 +20,8 @@ ENV AUTH_SECRET="build-placeholder"
 ENV AUTH_GOOGLE_ID="build-placeholder"
 ENV AUTH_GOOGLE_SECRET="build-placeholder"
 ENV ADMIN_EMAILS="build@placeholder"
-RUN npx prisma generate
-RUN npm run build
+RUN pnpm exec prisma generate
+RUN pnpm run build
 
 # --- Runner ---
 FROM base AS runner
@@ -38,7 +39,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --chown=nextjs:nodejs package.json package-lock.json ./
+COPY --chown=nextjs:nodejs package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
@@ -47,7 +48,7 @@ RUN mkdir -p /data && chown nextjs:nodejs /data
 
 # Install runtime dependencies as nextjs user (already owned correctly)
 USER nextjs
-RUN npm ci --omit=dev
+RUN pnpm install --frozen-lockfile --prod
 
 EXPOSE 3000
 
