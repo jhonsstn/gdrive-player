@@ -34,8 +34,8 @@ export default async function LoginPage() {
       </header>
 
       <main className="flex flex-1 items-center justify-center px-8 py-16">
-        <div className="flex w-full max-w-[400px] flex-col items-center rounded-xl border border-zinc-800 bg-zinc-900 px-8 py-12 text-center shadow-sm">
-          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-xl border border-zinc-700 bg-gradient-to-br from-zinc-800 to-zinc-800">
+        <div className="flex w-full max-w-100 flex-col items-center rounded-xl border border-zinc-800 bg-zinc-900 px-8 py-12 text-center shadow-sm">
+          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-xl border border-zinc-700 bg-linear-to-br from-zinc-800 to-zinc-800">
             <svg
               width="32"
               height="32"
