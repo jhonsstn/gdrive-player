@@ -216,7 +216,7 @@ export function VideoPlayerPane({
 
       <div className="w-full bg-black">
         {video ? (
-          <div ref={containerRef} className="h-150 w-full" />
+          <div ref={containerRef} className="h-125 min-h-100 w-full" />
         ) : (
           <div className="flex w-full flex-col items-center justify-center text-zinc-500">
             <svg
