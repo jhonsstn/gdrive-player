@@ -43,12 +43,13 @@ COPY --chown=nextjs:nodejs package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
+# Install runtime dependencies (before switching to non-root user)
+RUN pnpm install --frozen-lockfile --prod
+
 # Create data directory for SQLite
 RUN mkdir -p /data && chown nextjs:nodejs /data
 
-# Install runtime dependencies as nextjs user (already owned correctly)
 USER nextjs
-RUN pnpm install --frozen-lockfile --prod
 
 EXPOSE 3000
 
