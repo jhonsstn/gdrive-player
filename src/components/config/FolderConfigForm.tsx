@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { sortByNaturalName, type SortDirection } from "@/lib/sort";
+
 type ConfiguredFolder = {
   id: string;
   folderId: string;
@@ -29,8 +31,23 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
   const [sourceUrl, setSourceUrl] = useState("");
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [search, setSearch] = useState("");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const hasFolders = useMemo(() => folders.length > 0, [folders.length]);
+
+  const displayedFolders = useMemo(() => {
+    const query = search.toLowerCase();
+    const filtered = folders.filter(
+      (f) =>
+        (f.name ?? "").toLowerCase().includes(query) ||
+        f.folderId.toLowerCase().includes(query),
+    );
+    return sortByNaturalName(
+      filtered.map((f) => ({ ...f, name: f.name ?? "Unnamed folder" })),
+      sortDirection,
+    );
+  }, [folders, search, sortDirection]);
 
   async function handleAddFolder(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -152,9 +169,46 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
       </section>
 
       <section>
-        <h3 className="mb-4 text-lg font-semibold tracking-tight">
-          Configured Folders ({folders.length})
-        </h3>
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <h3 className="text-lg font-semibold tracking-tight">
+            Configured Folders ({folders.length})
+          </h3>
+          {hasFolders && (
+            <button
+              type="button"
+              onClick={() => setSortDirection((d) => (d === "asc" ? "desc" : "asc"))}
+              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-50 transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`transition-transform duration-200 ${sortDirection === "desc" ? "rotate-180" : ""}`}
+              >
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <polyline points="19 12 12 19 5 12"></polyline>
+              </svg>
+              Sort {sortDirection === "asc" ? "Ascending" : "Descending"}
+            </button>
+          )}
+        </div>
+
+        {hasFolders && (
+          <div className="mb-4">
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search folders…"
+              className="w-full rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-50 placeholder:text-zinc-500 focus:outline-2 focus:outline-blue-500 sm:w-64"
+            />
+          </div>
+        )}
 
         {!hasFolders ? (
           <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-900 px-8 py-12 text-center text-zinc-500 shadow-sm">
@@ -173,9 +227,13 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
             </svg>
             <p>No folders configured yet. Add one above.</p>
           </div>
+        ) : displayedFolders.length === 0 ? (
+          <div className="rounded-md border border-zinc-800 bg-zinc-900 p-4 text-center text-zinc-400">
+            No folders match your search.
+          </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {folders.map((folder) => (
+            {displayedFolders.map((folder) => (
               <div
                 key={folder.id}
                 className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 px-6 py-5 shadow-sm"
