@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AppHeader } from "@/components/AppHeader";
 import { PlaylistPanel } from "@/components/player/PlaylistPanel";
@@ -49,6 +49,7 @@ export function PlayerClient({
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [nextPageToken, setNextPageToken] = useState<string | undefined>();
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const initialVideoIdRef = useRef(initialVideoId);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,13 +77,14 @@ export function PlayerClient({
 
       setVideos(payload.videos);
       setNextPageToken(payload.nextPageToken);
+      const savedInitialVideoId = initialVideoIdRef.current;
       setCurrentVideoId((current) => {
         if (current && payload.videos.some((video) => video.id === current)) {
           return current;
         }
 
-        if (initialVideoId && payload.videos.some((video) => video.id === initialVideoId)) {
-          return initialVideoId;
+        if (savedInitialVideoId && payload.videos.some((video) => video.id === savedInitialVideoId)) {
+          return savedInitialVideoId;
         }
 
         return payload.videos[0]?.id ?? null;

@@ -39,6 +39,42 @@ type VjsPlayer = {
 
 type VjsFactory = (el: HTMLVideoElement, opts?: Record<string, unknown>) => VjsPlayer;
 
+type VjsStatic = {
+  getComponent: (name: string) => new (...args: unknown[]) => Record<string, unknown>;
+  registerComponent: (name: string, comp: unknown) => void;
+};
+
+function registerNextButton(
+  vjsAny: VjsStatic,
+  nextSvg: string,
+  onNextRef: React.RefObject<() => void>,
+) {
+  const VjsButton = vjsAny.getComponent("Button");
+
+  class NextButton extends VjsButton {
+    constructor(p: unknown, options: unknown) {
+      super(p, options);
+      const self = this as unknown as { controlText: (t: string) => void; hide: () => void; el: () => HTMLElement };
+      self.controlText("Next");
+      self.hide();
+      const btnEl = self.el();
+      if (btnEl) {
+        const icon = btnEl.querySelector(".vjs-icon-placeholder");
+        if (icon) icon.innerHTML = nextSvg;
+      }
+    }
+    handleClick() {
+      onNextRef.current();
+    }
+    buildCSSClass() {
+      const parentClass = (VjsButton.prototype as unknown as { buildCSSClass: () => string }).buildCSSClass.call(this);
+      return `vjs-next-button ${parentClass}`;
+    }
+  }
+
+  vjsAny.registerComponent("NextButton", NextButton);
+}
+
 export function VideoPlayerPane({
   video,
   canGoNext,
@@ -111,33 +147,9 @@ export function VideoPlayerPane({
         const videojs = vjsRaw as unknown as VjsFactory;
 
         // Register custom NextButton component (idempotent)
-        const vjsAny = vjsRaw as unknown as {
-          getComponent: (name: string) => new (...args: unknown[]) => Record<string, unknown>;
-          registerComponent: (name: string, comp: unknown) => void;
-        };
-        const VjsButton = vjsAny.getComponent("Button");
+        const vjsAny = vjsRaw as unknown as VjsStatic;
         const nextSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>`;
-        class NextButton extends VjsButton {
-          constructor(p: unknown, options: unknown) {
-            super(p, options);
-            const self = this as unknown as { controlText: (t: string) => void; hide: () => void; el: () => HTMLElement };
-            self.controlText("Next");
-            self.hide();
-            const btnEl = self.el();
-            if (btnEl) {
-              const icon = btnEl.querySelector(".vjs-icon-placeholder");
-              if (icon) icon.innerHTML = nextSvg;
-            }
-          }
-          handleClick() {
-            onNextRef.current();
-          }
-          buildCSSClass() {
-            const parentClass = (VjsButton.prototype as unknown as { buildCSSClass: () => string }).buildCSSClass.call(this);
-            return `vjs-next-button ${parentClass}`;
-          }
-        }
-        vjsAny.registerComponent("NextButton", NextButton);
+        registerNextButton(vjsAny, nextSvg, onNextRef);
 
         if (disposed) return;
 
@@ -231,16 +243,17 @@ export function VideoPlayerPane({
   }, [handleKeyDown]);
 
   // Swap source when video changes (keeps player alive, preserves fullscreen)
+  const videoId = video?.id ?? null;
   useEffect(() => {
     const player = playerRef.current;
-    if (!player || player.isDisposed() || !video) return;
+    if (!player || player.isDisposed() || !videoId) return;
 
     nextShownRef.current = false;
     const nextBtn = player.controlBar.getChild("NextButton");
     if (nextBtn) nextBtn.hide();
 
-    player.src({ src: `/api/stream/${video.id}`, type: "video/mp4" });
-  }, [video?.id]);
+    player.src({ src: `/api/stream/${videoId}`, type: "video/mp4" });
+  }, [videoId]);
 
   return (
     <section className="flex flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-0 shadow-sm">

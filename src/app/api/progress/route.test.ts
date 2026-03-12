@@ -133,6 +133,8 @@ describe("/api/progress", () => {
           currentTime: 90,
           duration: 100,
           watched: true,
+          folderId: null,
+          videoName: null,
         },
         update: { currentTime: 90, duration: 100, watched: true },
       });
