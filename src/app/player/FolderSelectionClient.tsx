@@ -160,7 +160,7 @@ export function FolderSelectionClient({
                         height="24"
                         viewBox="0 0 24 24"
                         fill="currentColor"
-                        className="shrink-0 text-blue-500"
+                        className="shrink-0 text-zinc-400"
                       >
                         <polygon points="5 3 19 12 5 21 5 3" />
                       </svg>
@@ -175,7 +175,7 @@ export function FolderSelectionClient({
                     )}
                     <div className="h-1 w-full overflow-hidden rounded-full bg-zinc-800">
                       <div
-                        className="h-full rounded-full bg-blue-500"
+                        className="h-full rounded-full bg-zinc-400"
                         style={{ width: `${Math.min(percent, 100)}%` }}
                       />
                     </div>
@@ -259,7 +259,7 @@ export function FolderSelectionClient({
                     strokeWidth="1.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="shrink-0 text-blue-500"
+                    className="shrink-0 text-zinc-400"
                   >
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                   </svg>
@@ -267,7 +267,7 @@ export function FolderSelectionClient({
                     {folder.name ?? folder.folderId}
                   </h3>
                   {newFolderIds.has(folder.folderId) && (
-                    <span className="shrink-0 rounded bg-blue-400/10 px-1.5 py-0.5 text-xs font-medium text-blue-400">
+                    <span className="shrink-0 rounded bg-amber-400/10 px-1.5 py-0.5 text-xs font-medium text-amber-400">
                       NEW
                     </span>
                   )}

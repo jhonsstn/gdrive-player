@@ -240,7 +240,7 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
               >
                 <div className="overflow-hidden pr-4">
                   <p className="mb-1 font-medium text-zinc-50">{folder.name ?? "Unnamed folder"}</p>
-                  <code className="mb-2 inline-block rounded-md bg-zinc-800 px-2 py-1 text-[0.8rem] text-blue-500">
+                  <code className="mb-2 inline-block rounded-md bg-zinc-800 px-2 py-1 text-[0.8rem] text-zinc-400">
                     ID: {folder.folderId}
                   </code>
                   <div

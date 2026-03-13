@@ -68,7 +68,7 @@ export default async function ConfigPage() {
             <p className="mt-2 text-zinc-400">Manage the folders synced to the video player.</p>
           </div>
           <div className="flex items-center gap-2 rounded-md bg-zinc-800 px-3 py-1 text-sm text-zinc-400">
-            <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+            <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
             {session.user.email}
           </div>
         </div>

@@ -28,7 +28,7 @@
 }
 
 @utility gradient-logo {
-  background: linear-gradient(135deg, theme(--color-blue-500), #8b5cf6);
+  background: linear-gradient(135deg, theme(--color-zinc-500), theme(--color-zinc-700));
 }
 
 /* Video.js dark theme */
@@ -42,7 +42,7 @@
 }
 .video-js .vjs-play-progress,
 .video-js .vjs-volume-level {
-  background-color: theme(--color-blue-500);
+  background-color: theme(--color-zinc-300);
 }
 .video-js .vjs-slider {
   background-color: rgba(255, 255, 255, 0.2);
