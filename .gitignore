@@ -47,8 +47,3 @@ dev.db
 dev.db-journal
 dev.db-shm
 dev.db-wal
-
-# agents
-.agents
-.agent
-skills-lock.json
