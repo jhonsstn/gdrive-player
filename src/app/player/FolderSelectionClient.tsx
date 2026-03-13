@@ -202,6 +202,7 @@ export function FolderSelectionClient({
           <button
             type="button"
             onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
+            aria-pressed={sortDirection === "desc"}
             className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-50 transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
           >
             <svg
@@ -228,6 +229,7 @@ export function FolderSelectionClient({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search folders…"
+            aria-label="Search folders"
             className="w-full rounded-md border border-zinc-800 bg-zinc-900 px-4 py-3 text-base text-zinc-50 placeholder:text-zinc-500 focus:outline-2 focus:outline-blue-500 sm:w-64 sm:px-3 sm:py-1.5 sm:text-sm"
           />
         </div>
@@ -253,37 +255,44 @@ export function FolderSelectionClient({
             No folders match your search.
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="flex flex-col gap-1 -mx-4 sm:mx-0">
             {displayedFolders.map((folder) => (
               <Link
                 key={folder.id}
                 href={`/player/${folder.folderId}`}
-                className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 transition-all duration-200 hover:border-blue-500/50 hover:bg-zinc-800/50"
+                className="group flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 rounded-xl px-4 py-4 transition-all duration-200 hover:bg-zinc-800/40"
               >
-                <div className="mb-3 flex items-center gap-3">
-                  <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="shrink-0 text-zinc-400"
-                  >
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                  </svg>
-                  <h3 className="truncate font-medium text-zinc-50">
-                    {folder.name ?? folder.folderId}
-                  </h3>
-                  {newFolderIds.has(folder.folderId) && (
-                    <span className="shrink-0 rounded bg-amber-400/10 px-1.5 py-0.5 text-xs font-medium text-amber-400">
-                      NEW
-                    </span>
-                  )}
+                <div className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-800/50 text-zinc-400 transition-colors group-hover:bg-zinc-800 group-hover:text-zinc-300">
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-3">
+                      <h3 className="truncate text-base font-medium text-zinc-100 transition-colors group-hover:text-blue-400">
+                        {folder.name ?? folder.folderId}
+                      </h3>
+                      {newFolderIds.has(folder.folderId) && (
+                        <span className="shrink-0 rounded bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-amber-400 uppercase">
+                          New
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <p className="truncate text-xs text-zinc-500">{folder.folderId}</p>
+                <p className="pl-14 sm:pl-0 font-mono text-xs text-zinc-600 transition-colors group-hover:text-zinc-500">
+                  {folder.folderId}
+                </p>
               </Link>
             ))}
           </div>

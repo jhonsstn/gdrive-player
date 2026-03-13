@@ -180,6 +180,7 @@ export function PlayerClient({
           <button
             type="button"
             onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
+            aria-pressed={sortDirection === "desc"}
             className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-50 transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
           >
             <svg

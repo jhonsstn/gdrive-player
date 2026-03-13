@@ -75,7 +75,7 @@ export function PlaylistPanel({
                 key={video.id}
                 type="button"
                 onClick={() => onSelect(video.id)}
-                className={`group flex w-full cursor-pointer items-center gap-4 rounded-xl border-none p-4 text-left transition-all duration-300 ${
+                className={`group flex w-full min-h-[48px] cursor-pointer items-center gap-4 rounded-xl border-none p-3 sm:p-4 text-left transition-all duration-300 ${
                   active
                     ? "bg-zinc-800 shadow-md"
                     : "bg-transparent hover:bg-zinc-800/80"
