@@ -208,7 +208,7 @@ export function PlayerClient({
         ) : null}
 
         {isLoading ? (
-          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(280px,360px)_1fr] lg:items-start">
+          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(320px,420px)_1fr] lg:items-start xl:grid-cols-[minmax(360px,480px)_1fr]">
             <div className="flex h-[calc(100vh-12rem)] flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
               <div className="border-b border-zinc-800 px-4 py-3">
                 <div className="h-4 w-20 animate-pulse rounded bg-zinc-800" />
@@ -234,7 +234,7 @@ export function PlayerClient({
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(280px,360px)_1fr] lg:items-start">
+          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(320px,420px)_1fr] lg:items-start xl:grid-cols-[minmax(360px,480px)_1fr]">
             <PlaylistPanel
               videos={videos}
               currentVideoId={currentVideoId}
