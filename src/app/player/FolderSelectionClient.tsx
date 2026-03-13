@@ -135,16 +135,16 @@ export function FolderSelectionClient({
                     <div className="h-6 w-6 shrink-0 animate-pulse rounded-full bg-zinc-800" />
                     <div className="h-4 flex-1 animate-pulse rounded bg-zinc-800" />
                   </div>
-                  <div className="mb-3 h-3 w-1/3 animate-pulse rounded bg-zinc-800" />
-                  <div className="h-1 w-full animate-pulse rounded-full bg-zinc-800" />
+                  <div className="mx-4 mb-3 h-3 w-1/3 animate-pulse rounded bg-zinc-800" />
+                  <div className="mx-4 mb-4 h-1 animate-pulse rounded-full bg-zinc-800" />
                 </div>
               ))}
             </div>
           </section>
         ) : continueWatching.length > 0 ? (
-          <section className="mb-8">
+          <section className="mb-12">
             <h2 className="mb-4 text-xl font-semibold tracking-tight">Continue Watching</h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {continueWatching.map((item) => {
                 const folder = folders.find((f) => f.folderId === item.folderId);
                 const percent = item.duration > 0 ? (item.currentTime / item.duration) * 100 : 0;
@@ -152,32 +152,43 @@ export function FolderSelectionClient({
                   <Link
                     key={item.videoId}
                     href={`/player/${item.folderId}?videoId=${item.videoId}`}
-                    className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 transition-all duration-200 hover:border-blue-500/50 hover:bg-zinc-800/50"
+                    className="group relative flex w-72 shrink-0 snap-start flex-col justify-end overflow-hidden rounded-xl border border-zinc-800/60 bg-gradient-to-t from-zinc-900 via-zinc-900/80 to-zinc-800/30 p-5 transition-all duration-300 hover:border-zinc-700/80 hover:shadow-lg hover:shadow-black/20"
                   >
-                    <div className="mb-3 flex items-center gap-3">
-                      <svg
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        className="shrink-0 text-zinc-400"
-                      >
-                        <polygon points="5 3 19 12 5 21 5 3" />
-                      </svg>
-                      <h3 className="truncate font-medium text-zinc-50">
-                        {(item.videoName ?? item.videoId).replace(/\.[^.]+$/, "")}
-                      </h3>
-                    </div>
-                    {folder && (
-                      <p className="mb-3 truncate text-xs text-zinc-500">
-                        {folder.name ?? folder.folderId}
-                      </p>
-                    )}
-                    <div className="h-1 w-full overflow-hidden rounded-full bg-zinc-800">
+                    <div className="absolute inset-x-0 top-0 h-1 w-full bg-zinc-800/50">
                       <div
-                        className="h-full rounded-full bg-zinc-400"
+                        className="h-full bg-blue-500 transition-all duration-500 ease-out"
                         style={{ width: `${Math.min(percent, 100)}%` }}
                       />
+                    </div>
+                    
+                    <div className="relative z-10 mt-6 flex flex-col gap-1">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-blue-500 transition-transform duration-300 group-hover:scale-110 group-hover:bg-blue-500 group-hover:text-white">
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            className="translate-x-0.5"
+                          >
+                            <polygon points="5 3 19 12 5 21 5 3" />
+                          </svg>
+                        </div>
+                        <h3 className="line-clamp-2 min-h-[2.5rem] font-medium leading-snug text-zinc-50 transition-colors group-hover:text-blue-400">
+                          {(item.videoName ?? item.videoId).replace(/\.[^.]+$/, "")}
+                        </h3>
+                      </div>
+                      
+                      {folder && (
+                        <div className="mt-2 flex items-center justify-between">
+                          <p className="truncate text-xs text-zinc-500">
+                            {folder.name ?? folder.folderId}
+                          </p>
+                          <span className="shrink-0 text-[10px] font-medium tracking-wider text-zinc-600 uppercase">
+                            Resume
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </Link>
                 );

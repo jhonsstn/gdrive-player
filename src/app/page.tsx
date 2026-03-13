@@ -35,26 +35,21 @@ export default async function LoginPage() {
 
       <main className="flex flex-1 items-center justify-center px-8 py-16">
         <div className="flex w-full max-w-100 flex-col items-center rounded-xl border border-zinc-800 bg-zinc-900 px-8 py-12 text-center shadow-sm">
-          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-xl border border-zinc-700 bg-linear-to-br from-zinc-800 to-zinc-800">
+          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500 shadow-inner">
             <svg
               width="32"
               height="32"
               viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              className="text-zinc-400"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              fill="currentColor"
+              className="translate-x-0.5"
             >
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
             </svg>
           </div>
 
-          <h2 className="mb-2 text-xl font-semibold tracking-tight">Welcome to GDrivePlayer</h2>
-          <p className="mb-10 text-[0.95rem] text-zinc-400">
-            Sign in to access and manage your Google Drive videos.
+          <h2 className="mb-2 text-2xl font-bold tracking-tight text-white">Your Drive. Your playlist.</h2>
+          <p className="mb-10 text-sm font-medium text-zinc-500">
+            Sign in to access your personal video library.
           </p>
 
           <Link
