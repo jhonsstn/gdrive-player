@@ -33,24 +33,19 @@ export function AppHeader({ userImage, userName, showAdminLink = false }: AppHea
 
   return (
     <header className="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-8 py-4">
-      <Link href="/player" className="flex items-center gap-3 transition-opacity hover:opacity-80">
-        <div className="gradient-logo flex h-8 w-8 items-center justify-center rounded-md shadow-[0_2px_10px_rgba(59,130,246,0.3)]">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="white"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
+      <div className="flex items-center gap-3 overflow-hidden">
+        <Link
+          href="/player"
+          className="gradient-logo flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white shadow-[0_2px_10px_rgba(59,130,246,0.3)] transition-transform hover:scale-105"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
           </svg>
-        </div>
-        <h1 className="text-xl font-semibold tracking-tight">GDrivePlayer</h1>
-      </Link>
-
+        </Link>
+        <Link href="/player" className="truncate text-lg font-semibold tracking-tight transition-colors hover:text-blue-400 sm:text-xl">
+          GDrivePlayer
+        </Link>
+      </div>
       <div className="flex items-center gap-3">
         {showAdminLink ? (
           <Link

@@ -207,7 +207,7 @@ export function PlayerClient({
         ) : null}
 
         {isLoading ? (
-          <div className="grid grid-cols-[minmax(280px,360px)_1fr] items-start gap-6">
+          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(280px,360px)_1fr] lg:items-start">
             <div className="flex h-[calc(100vh-12rem)] flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
               <div className="border-b border-zinc-800 px-4 py-3">
                 <div className="h-4 w-20 animate-pulse rounded bg-zinc-800" />
@@ -233,7 +233,7 @@ export function PlayerClient({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-[minmax(280px,360px)_1fr] items-start gap-6">
+          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(280px,360px)_1fr] lg:items-start">
             <PlaylistPanel
               videos={videos}
               currentVideoId={currentVideoId}
@@ -244,16 +244,18 @@ export function PlayerClient({
               onLoadMore={loadMore}
               isLoadingMore={isLoadingMore}
             />
-            <VideoPlayerPane
-              video={currentVideo}
-              canGoPrevious={currentIndex >= 0 && currentIndex < videos.length - 1}
-              canGoNext={currentIndex > 0}
-              onPrevious={goNext}
-              onNext={goPrevious}
-              initialTime={currentVideo ? getInitialTime(currentVideo.id) : undefined}
-              onTimeUpdate={handleTimeUpdate}
-              onEnded={goPrevious}
-            />
+            <div className="order-first lg:order-none">
+              <VideoPlayerPane
+                video={currentVideo}
+                canGoPrevious={currentIndex >= 0 && currentIndex < videos.length - 1}
+                canGoNext={currentIndex > 0}
+                onPrevious={goNext}
+                onNext={goPrevious}
+                initialTime={currentVideo ? getInitialTime(currentVideo.id) : undefined}
+                onTimeUpdate={handleTimeUpdate}
+                onEnded={goPrevious}
+              />
+            </div>
           </div>
         )}
       </main>

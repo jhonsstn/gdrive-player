@@ -55,8 +55,9 @@ export function PlaylistPanel({
   }, [hasMore, onLoadMore, isLoadingMore]);
 
   return (
-    <aside className="flex h-[calc(100vh-12rem)] flex-col rounded-xl border border-zinc-800 bg-zinc-900 py-4 shadow-sm">
-      <div className="mb-4 px-6">
+    <div className="w-full">
+      <aside className="no-scrollbar flex max-h-[60vh] flex-col rounded-xl border border-zinc-800 bg-zinc-900 py-4 shadow-sm lg:h-[calc(100vh-12rem)] lg:max-h-none">
+        <div className="mb-4 px-6">
         <h3 className="text-base font-semibold text-zinc-400">Playlist</h3>
       </div>
 
@@ -131,5 +132,6 @@ export function PlaylistPanel({
         )}
       </div>
     </aside>
+    </div>
   );
 }

@@ -144,7 +144,7 @@ export function FolderSelectionClient({
         ) : continueWatching.length > 0 ? (
           <section className="mb-12">
             <h2 className="mb-4 text-xl font-semibold tracking-tight">Continue Watching</h2>
-            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-6 pt-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {continueWatching.map((item) => {
                 const folder = folders.find((f) => f.folderId === item.folderId);
                 const percent = item.duration > 0 ? (item.currentTime / item.duration) * 100 : 0;
@@ -228,7 +228,7 @@ export function FolderSelectionClient({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search folders…"
-            className="w-full rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-50 placeholder:text-zinc-500 focus:outline-2 focus:outline-blue-500 sm:w-64"
+            className="w-full rounded-md border border-zinc-800 bg-zinc-900 px-4 py-3 text-base text-zinc-50 placeholder:text-zinc-500 focus:outline-2 focus:outline-blue-500 sm:w-64 sm:px-3 sm:py-1.5 sm:text-sm"
           />
         </div>
 
