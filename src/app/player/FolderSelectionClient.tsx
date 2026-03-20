@@ -1,32 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { AppHeader } from "@/components/AppHeader";
 import { sortByNaturalName, type SortDirection } from "@/lib/sort";
 import { Badge } from "@/components/ui/Badge";
 import { SortButton } from "@/components/ui/SortButton";
-
-type Folder = {
-  id: string;
-  folderId: string;
-  name: string | null;
-};
-
-type ContinueWatchingItem = {
-  videoId: string;
-  videoName: string | null;
-  folderId: string;
-  currentTime: number;
-  duration: number;
-  updatedAt: string;
-};
-
-type FoldersApiResponse = {
-  folders: Folder[];
-  error?: string;
-};
+import { useFolders, useFoldersHasNew, useContinueWatching } from "@/hooks/api";
 
 type FolderSelectionClientProps = {
   userImage?: string | null;
@@ -39,79 +20,32 @@ export function FolderSelectionClient({
   userName,
   isAdmin = false,
 }: FolderSelectionClientProps) {
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [search, setSearch] = useState("");
-  const [newFolderIds, setNewFolderIds] = useState<Set<string>>(new Set());
-  const [continueWatching, setContinueWatching] = useState<ContinueWatchingItem[]>([]);
-  const [isContinueWatchingLoading, setIsContinueWatchingLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
+  const { data: foldersData, isLoading: isFoldersLoading, error: foldersError } = useFolders();
+  const folders = useMemo(() => foldersData?.folders ?? [], [foldersData]);
 
-    async function loadFolders() {
-      setIsLoading(true);
+  const folderIds = useMemo(() => folders.map((f) => f.folderId), [folders]);
+  const { data: hasNewData } = useFoldersHasNew(folderIds);
+  const newFolderIds = useMemo(() => {
+    if (!hasNewData?.hasNew) return new Set<string>();
+    return new Set(
+      Object.entries(hasNewData.hasNew)
+        .filter(([, v]) => v)
+        .map(([k]) => k),
+    );
+  }, [hasNewData]);
 
-      const response = await fetch("/api/folders");
-      const payload = (await response.json()) as FoldersApiResponse;
+  const { data: cwData, isLoading: isContinueWatchingLoading } = useContinueWatching();
+  const continueWatching = cwData?.items ?? [];
 
-      if (cancelled) {
-        return;
-      }
-
-      if (!response.ok) {
-        setFolders([]);
-        setIsLoading(false);
-        setIsContinueWatchingLoading(false);
-        setStatusMessage(payload.error ?? "Failed to load folders");
-        return;
-      }
-
-      setFolders(payload.folders);
-      setIsLoading(false);
-      setStatusMessage(payload.folders.length === 0 ? "No folders configured." : null);
-
-      if (payload.folders.length === 0) {
-        setIsContinueWatchingLoading(false);
-      }
-
-      if (payload.folders.length > 0) {
-        const ids = payload.folders.map((f) => f.folderId).join(",");
-        try {
-          const [hasNewRes, cwRes] = await Promise.all([
-            fetch(`/api/folders/has-new?folderIds=${ids}`),
-            fetch("/api/progress/continue-watching"),
-          ]);
-          if (hasNewRes.ok && !cancelled) {
-            const hasNewPayload = (await hasNewRes.json()) as { hasNew: Record<string, boolean> };
-            setNewFolderIds(
-              new Set(
-                Object.entries(hasNewPayload.hasNew)
-                  .filter(([, v]) => v)
-                  .map(([k]) => k),
-              ),
-            );
-          }
-          if (cwRes.ok && !cancelled) {
-            const cwPayload = (await cwRes.json()) as { items: ContinueWatchingItem[] };
-            setContinueWatching(cwPayload.items);
-          }
-        } catch {
-          // silently ignore
-        } finally {
-          if (!cancelled) setIsContinueWatchingLoading(false);
-        }
-      }
-    }
-
-    void loadFolders();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const isLoading = isFoldersLoading;
+  const statusMessage = foldersError
+    ? "Failed to load folders"
+    : !isLoading && folders.length === 0
+      ? "No folders configured."
+      : null;
 
   const displayedFolders = useMemo(() => {
     const query = search.toLowerCase();
@@ -162,7 +96,7 @@ export function FolderSelectionClient({
                         style={{ width: `${Math.min(percent, 100)}%` }}
                       />
                     </div>
-                    
+
                     <div className="relative z-10 mt-6 flex flex-col gap-1">
                       <div className="flex items-center gap-3">
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-blue-500 transition-transform duration-300 group-hover:scale-110 group-hover:bg-blue-500 group-hover:text-white">
@@ -180,7 +114,7 @@ export function FolderSelectionClient({
                           {(item.videoName ?? item.videoId).replace(/\.[^.]+$/, "")}
                         </h3>
                       </div>
-                      
+
                       {folder && (
                         <div className="mt-2 flex items-center justify-between">
                           <p className="truncate text-xs text-zinc-500">

@@ -1,24 +1,32 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
-type ProgressEntry = {
-  currentTime: number;
-  duration: number;
-  watched: boolean;
-};
-
-type ProgressMap = Record<string, ProgressEntry>;
+import { useWatchProgressBatch, useLastSeen, invalidateAfterProgressUpdate } from "@/hooks/api";
 
 export type VideoMeta = Record<string, { folderId: string; modifiedTime: string | null; name: string }>;
 
 const FLUSH_INTERVAL_MS = 5_000;
 const WATCHED_THRESHOLD = 0.9;
+const EMPTY_PROGRESS: Record<string, { currentTime: number; duration: number; watched: boolean }> = {};
+const EMPTY_LAST_SEEN: Record<string, string> = {};
 
 export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
-  const [progressMap, setProgressMap] = useState<ProgressMap>({});
-  const [lastSeenMap, setLastSeenMap] = useState<Record<string, string>>({});
-  const lastSeenLoaded = useRef(false);
+  const { data: progressData, mutate: mutateProgress } = useWatchProgressBatch(videoIds);
+  const progressMap = useMemo(() => progressData?.progress ?? EMPTY_PROGRESS, [progressData]);
+
+  const folderIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const meta of Object.values(videoMeta)) {
+      ids.add(meta.folderId);
+    }
+    return [...ids];
+  }, [videoMeta]);
+
+  const { data: lastSeenData, mutate: mutateLastSeen } = useLastSeen(folderIds);
+  const lastSeenMap = useMemo(() => lastSeenData?.lastSeen ?? EMPTY_LAST_SEEN, [lastSeenData]);
+  const lastSeenLoaded = !!lastSeenData;
+
   const bufferRef = useRef<{
     videoId: string;
     currentTime: number;
@@ -29,57 +37,6 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
   } | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Batch fetch progress on mount / when videoIds change
-  useEffect(() => {
-    if (videoIds.length === 0) return;
-
-    let cancelled = false;
-    async function fetchProgress() {
-      const response = await fetch(`/api/progress?videoIds=${videoIds.join(",")}`);
-      if (!response.ok || cancelled) return;
-      const data = (await response.json()) as { progress: ProgressMap };
-      if (!cancelled) {
-        setProgressMap(data.progress);
-      }
-    }
-
-    void fetchProgress();
-    return () => {
-      cancelled = true;
-    };
-  }, [videoIds]);
-
-  // Fetch last-seen timestamps
-  const folderIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const meta of Object.values(videoMeta)) {
-      ids.add(meta.folderId);
-    }
-    return [...ids];
-  }, [videoMeta]);
-
-  useEffect(() => {
-    if (folderIds.length === 0) return;
-
-    let cancelled = false;
-    async function fetchLastSeen() {
-      const response = await fetch(`/api/progress/last-seen?folderIds=${folderIds.join(",")}`);
-      if (!response.ok || cancelled) return;
-      const data = (await response.json()) as {
-        lastSeen: Record<string, string>;
-      };
-      if (!cancelled) {
-        setLastSeenMap(data.lastSeen);
-        lastSeenLoaded.current = true;
-      }
-    }
-
-    void fetchLastSeen();
-    return () => {
-      cancelled = true;
-    };
-  }, [folderIds]);
-
   const flushBuffer = useCallback(async () => {
     const buf = bufferRef.current;
     if (!buf) return;
@@ -89,21 +46,33 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
 
     const watched = duration > 0 && currentTime / duration >= WATCHED_THRESHOLD;
 
-    // Optimistically update local state
-    setProgressMap((prev) => ({
-      ...prev,
-      [videoId]: { currentTime, duration, watched },
-    }));
+    // Optimistically update local SWR cache
+    void mutateProgress(
+      (prev) => {
+        if (!prev) return prev;
+        return {
+          progress: {
+            ...prev.progress,
+            [videoId]: { currentTime, duration, watched },
+          },
+        };
+      },
+      { revalidate: false },
+    );
 
     // Optimistically update last-seen when watched
     if (watched && folderId && videoModifiedTime) {
-      setLastSeenMap((prev) => {
-        const current = prev[folderId];
-        if (!current || videoModifiedTime > current) {
-          return { ...prev, [folderId]: videoModifiedTime };
-        }
-        return prev;
-      });
+      void mutateLastSeen(
+        (prev) => {
+          if (!prev) return prev;
+          const current = prev.lastSeen[folderId];
+          if (!current || videoModifiedTime > current) {
+            return { lastSeen: { ...prev.lastSeen, [folderId]: videoModifiedTime } };
+          }
+          return prev;
+        },
+        { revalidate: false },
+      );
     }
 
     try {
@@ -128,10 +97,13 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
           body: JSON.stringify({ folderId, videoModifiedTime }),
         });
       }
+
+      // Invalidate continue-watching and has-new caches in background
+      invalidateAfterProgressUpdate();
     } catch {
       // Silently ignore — the optimistic update still holds
     }
-  }, []);
+  }, [mutateProgress, mutateLastSeen]);
 
   // Periodic flush
   useEffect(() => {
@@ -223,14 +195,14 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
 
   const isNew = useCallback(
     (videoId: string): boolean => {
-      if (!lastSeenLoaded.current) return false;
+      if (!lastSeenLoaded) return false;
       const meta = videoMeta[videoId];
       if (!meta?.modifiedTime) return false;
       const threshold = effectiveLastSeen[meta.folderId];
       if (!threshold) return false;
       return meta.modifiedTime > threshold && !isWatched(videoId);
     },
-    [videoMeta, effectiveLastSeen, isWatched],
+    [videoMeta, effectiveLastSeen, isWatched, lastSeenLoaded],
   );
 
   return { recordTime, flush, getInitialTime, isWatched, isNew };

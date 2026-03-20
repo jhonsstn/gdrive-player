@@ -1,30 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { AppHeader } from "@/components/AppHeader";
 import { PlaylistPanel } from "@/components/player/PlaylistPanel";
 import { VideoPlayerPane } from "@/components/player/VideoPlayerPane";
 import { useWatchProgress, type VideoMeta } from "@/hooks/useWatchProgress";
 import { SortButton } from "@/components/ui/SortButton";
+import { useVideos } from "@/hooks/api";
 
 type SortDirection = "asc" | "desc";
-
-type PlayerVideo = {
-  id: string;
-  name: string;
-  mimeType: string;
-  sourceUrl: string;
-  folderId: string;
-  modifiedTime: string | null;
-};
-
-type VideosApiResponse = {
-  videos: PlayerVideo[];
-  sort: SortDirection;
-  nextPageToken?: string;
-  error?: string;
-};
 
 type PlayerClientProps = {
   folderId: string;
@@ -43,82 +28,31 @@ export function PlayerClient({
   isAdmin = false,
   initialVideoId,
 }: PlayerClientProps) {
-  const [videos, setVideos] = useState<PlayerVideo[]>([]);
-  const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-  const [isLoading, setIsLoading] = useState(true);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [nextPageToken, setNextPageToken] = useState<string | undefined>();
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const initialVideoIdRef = useRef(initialVideoId);
 
-  useEffect(() => {
-    let cancelled = false;
+  const {
+    videos,
+    isLoading,
+    error,
+    hasMore,
+    isLoadingMore,
+    loadMore,
+  } = useVideos(folderId, sortDirection);
 
-    async function loadVideos() {
-      setIsLoading(true);
-      setNextPageToken(undefined);
+  const statusMessage = error
+    ? "Failed to load videos"
+    : !isLoading && videos.length === 0
+      ? "No videos found."
+      : null;
 
-      const response = await fetch(
-        `/api/videos?sort=${sortDirection}&folderId=${encodeURIComponent(folderId)}`,
-      );
-      const payload = (await response.json()) as VideosApiResponse;
-
-      if (cancelled) {
-        return;
-      }
-
-      if (!response.ok) {
-        setVideos([]);
-        setCurrentVideoId(null);
-        setIsLoading(false);
-        setStatusMessage(payload.error ?? "Failed to load videos");
-        return;
-      }
-
-      setVideos(payload.videos);
-      setNextPageToken(payload.nextPageToken);
-      const savedInitialVideoId = initialVideoIdRef.current;
-      setCurrentVideoId((current) => {
-        if (current && payload.videos.some((video) => video.id === current)) {
-          return current;
-        }
-
-        if (savedInitialVideoId && payload.videos.some((video) => video.id === savedInitialVideoId)) {
-          return savedInitialVideoId;
-        }
-
-        return payload.videos[0]?.id ?? null;
-      });
-      setIsLoading(false);
-      setStatusMessage(payload.videos.length === 0 ? "No videos found." : null);
-    }
-
-    void loadVideos();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [sortDirection, folderId]);
-
-  async function loadMore() {
-    if (!nextPageToken || isLoadingMore) return;
-    setIsLoadingMore(true);
-
-    try {
-      const response = await fetch(
-        `/api/videos?sort=${sortDirection}&folderId=${encodeURIComponent(folderId)}&pageToken=${encodeURIComponent(nextPageToken)}`,
-      );
-      const payload = (await response.json()) as VideosApiResponse;
-
-      if (response.ok) {
-        setVideos((prev) => [...prev, ...payload.videos]);
-        setNextPageToken(payload.nextPageToken);
-      }
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }
+  // Derive effective video ID synchronously — no useEffect gap
+  const currentVideoId = useMemo(() => {
+    if (videos.length === 0) return null;
+    if (selectedVideoId && videos.some((v) => v.id === selectedVideoId)) return selectedVideoId;
+    if (initialVideoId && videos.some((v) => v.id === initialVideoId)) return initialVideoId;
+    return videos[0]?.id ?? null;
+  }, [videos, selectedVideoId, initialVideoId]);
 
   const videoIds = useMemo(() => videos.map((v) => v.id), [videos]);
 
@@ -148,7 +82,7 @@ export function PlayerClient({
     }
 
     flush();
-    setCurrentVideoId(videos[currentIndex + 1]?.id ?? null);
+    setSelectedVideoId(videos[currentIndex + 1]?.id ?? null);
   }
 
   function goPrevious() {
@@ -157,12 +91,12 @@ export function PlayerClient({
     }
 
     flush();
-    setCurrentVideoId(videos[currentIndex - 1]?.id ?? null);
+    setSelectedVideoId(videos[currentIndex - 1]?.id ?? null);
   }
 
   function handleSelect(videoId: string) {
     flush();
-    setCurrentVideoId(videoId);
+    setSelectedVideoId(videoId);
   }
 
   function handleTimeUpdate(currentTime: number, duration: number) {
@@ -224,7 +158,7 @@ export function PlayerClient({
               onSelect={handleSelect}
               isWatched={isWatched}
               isNew={isNew}
-              hasMore={!!nextPageToken}
+              hasMore={hasMore}
               onLoadMore={loadMore}
               isLoadingMore={isLoadingMore}
             />

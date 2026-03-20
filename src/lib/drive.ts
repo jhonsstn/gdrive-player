@@ -1,6 +1,10 @@
 import { ALLOWED_VIDEO_MIME_TYPES, isAllowedVideoMimeType } from "@/lib/video-mime";
+import { TTLCache } from "@/lib/cache";
 
 const DRIVE_API_BASE_URL = "https://www.googleapis.com/drive/v3";
+
+const videosPageCache = new TTLCache<{ videos: DriveVideoFile[]; nextPageToken: string | undefined }>(2 * 60 * 1000);
+const latestModifiedCache = new TTLCache<string | null>(60 * 1000);
 const DRIVE_LIST_FIELDS = "nextPageToken,files(id,name,mimeType,size,modifiedTime)";
 
 export type DriveVideoFile = {
@@ -146,6 +150,11 @@ export async function listFolderVideosPage(
   options: { pageToken?: string; pageSize?: number; sortDirection?: "asc" | "desc" },
 ): Promise<{ videos: DriveVideoFile[]; nextPageToken: string | undefined }> {
   const { pageToken, pageSize = 50, sortDirection = "desc" } = options;
+
+  const cacheKey = `${folderId}:${sortDirection}:${pageSize}:${pageToken ?? ""}`;
+  const cached = videosPageCache.get(cacheKey);
+  if (cached) return cached;
+
   const mimeTypeFilter = [...ALLOWED_VIDEO_MIME_TYPES].map((m) => `mimeType='${m}'`).join(" or ");
   const search = new URLSearchParams({
     q: `'${folderId}' in parents and trashed = false and (${mimeTypeFilter})`,
@@ -184,13 +193,18 @@ export async function listFolderVideosPage(
     });
   }
 
-  return { videos, nextPageToken: page.nextPageToken };
+  const result = { videos, nextPageToken: page.nextPageToken };
+  videosPageCache.set(cacheKey, result);
+  return result;
 }
 
 export async function getLatestVideoModifiedTime(
   accessToken: string,
   folderId: string,
 ): Promise<string | null> {
+  const cacheKey = `latest:${folderId}`;
+  if (latestModifiedCache.has(cacheKey)) return latestModifiedCache.get(cacheKey)!;
+
   const mimeTypeFilter = [...ALLOWED_VIDEO_MIME_TYPES].map((m) => `mimeType='${m}'`).join(" or ");
   const search = new URLSearchParams({
     q: `'${folderId}' in parents and trashed=false and (${mimeTypeFilter})`,
@@ -211,7 +225,9 @@ export async function getLatestVideoModifiedTime(
   }
 
   const data = (await response.json()) as { files?: Array<{ modifiedTime?: string }> };
-  return data.files?.[0]?.modifiedTime ?? null;
+  const latestTime = data.files?.[0]?.modifiedTime ?? null;
+  latestModifiedCache.set(cacheKey, latestTime);
+  return latestTime;
 }
 
 export async function streamDriveFile(

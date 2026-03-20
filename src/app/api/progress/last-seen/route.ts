@@ -25,7 +25,9 @@ export async function GET(request: Request) {
     lastSeen[row.folderId] = row.lastSeenDate.toISOString();
   }
 
-  return NextResponse.json({ lastSeen });
+  return NextResponse.json({ lastSeen }, {
+    headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+  });
 }
 
 export async function PUT(request: Request) {
