@@ -36,12 +36,18 @@ Next.js 16 (App Router), TypeScript strict, React 19, next-auth v5 (Google OAuth
 | Route | Access | Purpose |
 |---|---|---|
 | `/` | Public | Login; redirects authed users to `/player` |
-| `/player` | Authenticated | Video browse & playback |
+| `/player` | Authenticated | Folder selection + "Continue Watching" landing |
+| `/player/[folderId]` | Authenticated | Browse and play videos in a specific folder |
 | `/config` | Admin only | Manage configured Drive folders |
 | `/api/auth/[...nextauth]` | Public | NextAuth handler |
-| `/api/config/folders` | Admin | GET/POST/DELETE folder config |
+| `/api/config/folders` | Admin | GET/POST/DELETE folder config (with name) |
+| `/api/folders` | Authenticated | GET list of configured folders (id, folderId, name) |
+| `/api/folders/has-new` | Authenticated | Check if any folder has unwatched new videos |
 | `/api/videos` | Authenticated | Aggregated video list from configured folders |
 | `/api/stream/[fileId]` | Authenticated | Proxy Drive video with Range support |
+| `/api/progress` | Authenticated | GET batch watch progress; PUT/POST upsert progress |
+| `/api/progress/last-seen` | Authenticated | GET/PUT per-folder last-seen timestamps |
+| `/api/progress/continue-watching` | Authenticated | GET in-progress (unwatched) videos across folders |
 
 All pages use `export const dynamic = "force-dynamic"`.
 
@@ -61,11 +67,24 @@ if (!isAdminSession(session)) return 403;  // admin-only routes
 
 ### Database
 
-SQLite via better-sqlite3 adapter. Single model: `ConfiguredFolder` (id, folderId, sourceUrl, createdAt, updatedAt). Prisma client is a singleton on `globalThis` to survive HMR.
+SQLite via better-sqlite3 adapter. Prisma client is a singleton on `globalThis` to survive HMR. Models:
+
+- `ConfiguredFolder` — id, folderId (unique), name (optional), sourceUrl, createdAt, updatedAt
+- `WatchProgress` — userEmail + videoId (unique pair), currentTime, duration, watched, folderId, videoName, updatedAt. A video is considered watched when `currentTime / duration >= 0.9`.
+- `UserFolderLastSeen` — userEmail + folderId (unique pair), lastSeenDate, updatedAt. Tracks the most recent `modifiedTime` of a watched video per folder, used to compute "NEW" badges.
 
 ### Google Drive Integration (`src/lib/drive.ts`)
 
 `listFolderVideos()` paginates Drive API v3 (up to 1000/page), filtering by MIME types in `video-mime.ts`. `streamDriveFile()` proxies media downloads forwarding Range headers. `drive-url.ts` parses folder IDs from URLs or raw IDs.
+
+### Watch Progress (`src/hooks/useWatchProgress.ts`)
+
+Client-side hook used in the player. Buffers time updates in a ref and flushes to `/api/progress` every 5 seconds. On tab close, uses `navigator.sendBeacon` for a reliable final save (this is why `PUT` is aliased to `POST` on the progress route). Provides `recordTime`, `flush`, `getInitialTime`, `isWatched`, and `isNew`. "New" is computed by comparing a video's `modifiedTime` against `UserFolderLastSeen.lastSeenDate`.
+
+### Utilities
+
+- `src/lib/episode-name.ts` — `parseEpisodeName()` strips fansub brackets from filenames like `[Group][Show Name] - Episode 42.mp4` → `Show Name - 42`. Falls back to filename without extension.
+- `src/lib/sort.ts` — video sorting logic used in the playlist.
 
 ### Styling
 
