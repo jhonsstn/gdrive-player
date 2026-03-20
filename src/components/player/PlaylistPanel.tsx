@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 
 import { parseEpisodeName } from "@/lib/episode-name";
+import { Badge } from "@/components/ui/Badge";
 
 type PlaylistVideo = {
   id: string;
@@ -116,9 +117,7 @@ export function PlaylistPanel({
                       <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
                   ) : newVideo ? (
-                    <span className="rounded bg-amber-400/10 px-2 py-1 text-xs font-bold text-amber-400">
-                      NEW
-                    </span>
+                    <Badge>NEW</Badge>
                   ) : null}
                 </div>
               </button>

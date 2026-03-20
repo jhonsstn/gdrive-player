@@ -90,3 +90,31 @@ Validated by Zod in `src/lib/env.ts`. See `.env.example`:
 ## Path Alias
 
 `@/*` maps to `./src/*` (configured in tsconfig.json and vitest.config.ts).
+
+## Design Context
+
+### Users
+Personal and family use — people watching their own Google Drive videos at home, in a relaxed, leisure context. The job to be done is simple: find the video and watch it with zero friction. There's no onboarding complexity; users already know what they want to watch.
+
+### Brand Personality
+**Clean, focused, effortless.** The interface should feel like it disappears — a quiet frame around the content, never competing with it. Calm confidence, not flash.
+
+### Aesthetic Direction
+- **Reference**: Mubi and Letterboxd — curated, editorial, slightly artsy dark aesthetic. Considered typography, restrained color, content-first layouts.
+- **Anti-references**: Avoid the busy, badge-heavy look of Netflix or Plex. No aggressive CTAs, no metadata overload.
+- **Theme**: Dark only. The zinc palette (zinc-950 base, zinc-900 panels) is established and correct — lean into it.
+- **Color**: Blue accent (#3b82f6) for the one primary action; everything else recedes into neutrals. Amber/emerald status accents used sparingly and meaningfully.
+- **Typography**: System sans, tight tracking on headings, generous line-height on body. Lean toward restraint over expressiveness.
+- **Motion**: Simple, tasteful. Subtle transitions (200–300ms) that feel smooth, not performative. No motion for motion's sake.
+
+### Design Principles
+
+1. **Content is the hero.** The video player and thumbnails should dominate. Chrome (nav, controls, labels) recedes — visible when needed, invisible otherwise.
+
+2. **One path, no detours.** Minimize clicks between login and playback. Layouts should be scannable at a glance with clear visual hierarchy.
+
+3. **Quiet confidence.** Avoid decorative elements that don't carry meaning. Every color, shadow, and spacing choice should earn its place.
+
+4. **Effortless state.** Loading, empty, and error states should feel calm — skeleton loaders, muted tones, no alarming red walls of text.
+
+5. **Editorial restraint.** Prefer whitespace over density. Let items breathe. Align with the Mubi/Letterboxd sensibility: a few things presented beautifully beats many things crammed in.

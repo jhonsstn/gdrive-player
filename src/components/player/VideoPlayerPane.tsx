@@ -3,6 +3,7 @@
 import { parseEpisodeName } from "@/lib/episode-name";
 import "video.js/dist/video-js.css";
 import { useEffect, useRef, useCallback } from "react";
+import { Button } from "@/components/ui/Button";
 
 type VideoEntry = {
   id: string;
@@ -263,12 +264,12 @@ export function VideoPlayerPane({
         </h2>
 
         <div className="flex gap-2">
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             onClick={onPrevious}
             disabled={!canGoPrevious}
-            className="inline-flex cursor-pointer items-center justify-center gap-1 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-50 transition-all duration-200 hover:not-disabled:border-zinc-700 hover:not-disabled:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
             title="Previous video"
+            className="gap-1"
           >
             <svg
               width="16"
@@ -280,17 +281,17 @@ export function VideoPlayerPane({
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <polygon points="19 20 9 12 19 4 19 20"></polygon>
-              <line x1="5" y1="19" x2="5" y2="5"></line>
+              <polygon points="19 20 9 12 19 4 19 20" />
+              <line x1="5" y1="19" x2="5" y2="5" />
             </svg>
             <span className="hidden">Prev</span>
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="secondary"
             onClick={onNext}
             disabled={!canGoNext}
-            className="inline-flex cursor-pointer items-center justify-center gap-1 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-50 transition-all duration-200 hover:not-disabled:border-zinc-700 hover:not-disabled:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
             title="Next video"
+            className="gap-1"
           >
             <span className="hidden">Next</span>
             <svg
@@ -303,10 +304,10 @@ export function VideoPlayerPane({
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <polygon points="5 4 15 12 5 20 5 4"></polygon>
-              <line x1="19" y1="5" x2="19" y2="19"></line>
+              <polygon points="5 4 15 12 5 20 5 4" />
+              <line x1="19" y1="5" x2="19" y2="19" />
             </svg>
-          </button>
+          </Button>
         </div>
       </div>
 

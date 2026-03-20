@@ -3,6 +3,9 @@
 import { useMemo, useState } from "react";
 
 import { sortByNaturalName, type SortDirection } from "@/lib/sort";
+import { Button } from "@/components/ui/Button";
+import { SortButton } from "@/components/ui/SortButton";
+import { StatusMessage } from "@/components/ui/StatusMessage";
 
 type ConfiguredFolder = {
   id: string;
@@ -116,56 +119,12 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
               className="w-full rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-50 transition-all duration-200 placeholder:text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="inline-flex h-[38px] cursor-pointer items-center justify-center rounded-md border border-transparent bg-blue-500 px-6 py-2 text-sm font-medium text-white transition-all duration-200 hover:not-disabled:bg-blue-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <Button type="submit" variant="primary" disabled={submitting}>
             {submitting ? "Saving..." : "Add folder"}
-          </button>
+          </Button>
         </form>
 
-        {message ? (
-          <div
-            className={`mt-4 flex items-center gap-2 rounded-md border px-4 py-3 text-[0.9rem] ${
-              message.type === "error"
-                ? "border-red-500 bg-red-500/10 text-red-500"
-                : "border-green-500 bg-green-500/10 text-green-500"
-            }`}
-          >
-            {message.type === "error" ? (
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-              </svg>
-            ) : (
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-              </svg>
-            )}
-            {message.text}
-          </div>
-        ) : null}
+        {message ? <StatusMessage type={message.type} message={message.text} /> : null}
       </section>
 
       <section>
@@ -174,27 +133,10 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
             Configured Folders ({folders.length})
           </h3>
           {hasFolders && (
-            <button
-              type="button"
-              onClick={() => setSortDirection((d) => (d === "asc" ? "desc" : "asc"))}
-              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-50 transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`transition-transform duration-200 ${sortDirection === "desc" ? "rotate-180" : ""}`}
-              >
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <polyline points="19 12 12 19 5 12"></polyline>
-              </svg>
-              Sort {sortDirection === "asc" ? "Ascending" : "Descending"}
-            </button>
+            <SortButton
+              direction={sortDirection}
+              onToggle={() => setSortDirection((d) => (d === "asc" ? "desc" : "asc"))}
+            />
           )}
         </div>
 
@@ -250,13 +192,9 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
                     {folder.sourceUrl}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteFolder(folder.id)}
-                  className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md border border-red-500/10 bg-transparent px-4 py-2 text-sm font-medium text-red-500 transition-all duration-200 hover:bg-red-500/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-                >
+                <Button variant="destructive" onClick={() => handleDeleteFolder(folder.id)}>
                   Remove
-                </button>
+                </Button>
               </div>
             ))}
           </div>

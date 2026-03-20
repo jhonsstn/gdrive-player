@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import { AppHeader } from "@/components/AppHeader";
 import { sortByNaturalName, type SortDirection } from "@/lib/sort";
+import { Badge } from "@/components/ui/Badge";
+import { SortButton } from "@/components/ui/SortButton";
 
 type Folder = {
   id: string;
@@ -199,28 +201,10 @@ export function FolderSelectionClient({
 
         <div className="mb-6 flex items-center justify-between gap-4">
           <h2 className="text-xl font-semibold tracking-tight">Select a Folder</h2>
-          <button
-            type="button"
-            onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
-            aria-pressed={sortDirection === "desc"}
-            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-50 transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={`transition-transform duration-200 ${sortDirection === "desc" ? "rotate-180" : ""}`}
-            >
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <polyline points="19 12 12 19 5 12"></polyline>
-            </svg>
-            Sort {sortDirection === "asc" ? "Ascending" : "Descending"}
-          </button>
+          <SortButton
+            direction={sortDirection}
+            onToggle={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
+          />
         </div>
 
         <div className="mb-6">
@@ -283,9 +267,7 @@ export function FolderSelectionClient({
                         {folder.name ?? folder.folderId}
                       </h3>
                       {newFolderIds.has(folder.folderId) && (
-                        <span className="shrink-0 rounded bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-amber-400 uppercase">
-                          New
-                        </span>
+                        <Badge size="sm">New</Badge>
                       )}
                     </div>
                   </div>

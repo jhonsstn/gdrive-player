@@ -6,6 +6,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { PlaylistPanel } from "@/components/player/PlaylistPanel";
 import { VideoPlayerPane } from "@/components/player/VideoPlayerPane";
 import { useWatchProgress, type VideoMeta } from "@/hooks/useWatchProgress";
+import { SortButton } from "@/components/ui/SortButton";
 
 type SortDirection = "asc" | "desc";
 
@@ -177,28 +178,10 @@ export function PlayerClient({
       <main className="mx-auto w-full max-w-[1366px] flex-1 p-8">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-xl font-semibold tracking-tight">{folderName ?? "My Videos"}</h2>
-          <button
-            type="button"
-            onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
-            aria-pressed={sortDirection === "desc"}
-            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm font-medium text-zinc-50 transition-all duration-200 hover:border-zinc-700 hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={`transition-transform duration-200 ${sortDirection === "desc" ? "rotate-180" : ""}`}
-            >
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <polyline points="19 12 12 19 5 12"></polyline>
-            </svg>
-            Sort {sortDirection === "asc" ? "Ascending" : "Descending"}
-          </button>
+          <SortButton
+            direction={sortDirection}
+            onToggle={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
+          />
         </div>
 
         {statusMessage ? (
