@@ -120,7 +120,7 @@ export function FolderSelectionClient({
                           <p className="truncate text-xs text-zinc-500">
                             {folder.name ?? folder.folderId}
                           </p>
-                          <span className="shrink-0 text-[10px] font-medium tracking-wider text-zinc-600 uppercase">
+                          <span className="shrink-0 text-[11px] font-medium tracking-wider text-zinc-600 uppercase">
                             Resume
                           </span>
                         </div>

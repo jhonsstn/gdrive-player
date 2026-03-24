@@ -6,7 +6,7 @@ type StatusMessageProps = {
 export function StatusMessage({ type, message }: StatusMessageProps) {
   return (
     <div
-      className={`mt-4 flex items-center gap-2 rounded-md border px-4 py-3 text-[0.9rem] ${
+      className={`mt-4 flex items-center gap-2 rounded-md border px-4 py-3 text-sm ${
         type === "error"
           ? "border-red-500 bg-red-500/10 text-red-500"
           : "border-green-500 bg-green-500/10 text-green-500"

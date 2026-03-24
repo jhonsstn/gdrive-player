@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Base typography */
+body {
+  font-kerning: normal;
+  line-height: 1.6;
+}
+
 .video-js .vjs-next-button.vjs-control {
   width: 40px;
   display: flex;

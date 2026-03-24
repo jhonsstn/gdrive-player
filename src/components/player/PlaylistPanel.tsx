@@ -82,7 +82,7 @@ export function PlaylistPanel({
                     : "bg-transparent hover:bg-zinc-800/80"
                 }`}
               >
-                <div className={`flex shrink-0 items-center justify-center text-2xl font-black tabular-nums tracking-tighter transition-colors duration-300 ${
+                <div className={`flex shrink-0 items-center justify-center tabular-nums text-xl font-bold tracking-tight transition-colors duration-300 ${
                   active ? "text-blue-500" : "text-zinc-700 group-hover:text-zinc-500"
                 }`}>
                   {index + 1}
