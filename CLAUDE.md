@@ -123,8 +123,15 @@ Personal and family use — people watching their own Google Drive videos at hom
 - **Anti-references**: Avoid the busy, badge-heavy look of Netflix or Plex. No aggressive CTAs, no metadata overload.
 - **Theme**: Dark only. The zinc palette (zinc-950 base, zinc-900 panels) is established and correct — lean into it.
 - **Color**: Blue accent (#3b82f6) for the one primary action; everything else recedes into neutrals. Amber/emerald status accents used sparingly and meaningfully.
-- **Typography**: System sans, tight tracking on headings, generous line-height on body. Lean toward restraint over expressiveness.
-- **Motion**: Simple, tasteful. Subtle transitions (200–300ms) that feel smooth, not performative. No motion for motion's sake.
+- **Typography**: Inter or Geist — neutral, slightly editorial, consistent cross-platform. Tight tracking on headings, generous line-height on body. Restrained over expressive.
+- **Motion**: Simple, tasteful. Subtle transitions (200–300ms) that feel smooth, not performative. No motion for motion's sake. `prefers-reduced-motion` is not enforced — transitions run always.
+
+### Accessibility
+- Best-effort: keyboard navigation, sufficient color contrast, screen reader basics (aria-labels on icon-only buttons, focusable controls, visible focus rings).
+- No formal WCAG standard enforced.
+
+### Upcoming Surfaces
+- **Notification center**: In-app alerts/badges for new content. Should feel understated — never alarming. Use the existing amber accent for "new" signals. Panel should be overlay-style, not a full page, consistent with the quiet confidence of the rest of the UI.
 
 ### Design Principles
 
