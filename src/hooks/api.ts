@@ -130,6 +130,31 @@ export function useLastSeen(folderIds: string[]) {
   });
 }
 
+// ── Notifications ──
+
+type Notification = {
+  folderId: string;
+  folderName: string;
+  newCount: number;
+};
+
+export function useNotifications() {
+  return useSWR<{ notifications: Notification[] }>("/api/notifications", {
+    dedupingInterval: 60 * 1000,
+    revalidateOnFocus: true,
+  });
+}
+
+export function useNotificationBaselines(folderIds: string[]) {
+  const key = folderIds.length > 0
+    ? `/api/notifications/baselines?folderIds=${folderIds.join(",")}`
+    : null;
+
+  return useSWR<{ baselines: Record<string, string> }>(key, {
+    dedupingInterval: 5 * 60 * 1000,
+  });
+}
+
 // ── Cache Invalidation ──
 
 export function invalidateAfterProgressUpdate() {

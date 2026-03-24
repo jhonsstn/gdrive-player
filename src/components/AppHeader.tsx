@@ -5,6 +5,9 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 
+import { useNotifications } from "@/hooks/api";
+import { NotificationPanel } from "@/components/NotificationPanel";
+
 type AppHeaderProps = {
   userImage?: string | null;
   userName?: string | null;
@@ -13,23 +16,70 @@ type AppHeaderProps = {
 
 export function AppHeader({ userImage, userName, showAdminLink = false }: AppHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  const { data: notifData, mutate: mutateNotifications } = useNotifications();
+  const notifications = notifData?.notifications ?? [];
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setMenuOpen(false);
       }
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setNotifOpen(false);
+      }
     }
 
-    if (menuOpen) {
+    if (menuOpen || notifOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [menuOpen]);
+  }, [menuOpen, notifOpen]);
+
+  function handleClear(folderIds: string[]) {
+    // Optimistically remove cleared folders from the list
+    void mutateNotifications(
+      (prev) => {
+        if (!prev) return prev;
+        return {
+          notifications: prev.notifications.filter(
+            (n) => !folderIds.includes(n.folderId),
+          ),
+        };
+      },
+      { revalidate: false },
+    );
+
+    // Fire and forget — silent backend update
+    void fetch("/api/notifications/clear", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ folderIds }),
+    });
+
+    // Close panel if navigating (single folder clear from row click)
+    if (folderIds.length === 1) {
+      setNotifOpen(false);
+    }
+  }
+
+  function handleClearAll() {
+    void mutateNotifications({ notifications: [] }, { revalidate: false });
+
+    void fetch("/api/notifications/clear", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ all: true }),
+    });
+
+    setNotifOpen(false);
+  }
 
   return (
     <header className="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-8 py-4">
@@ -68,6 +118,43 @@ export function AppHeader({ userImage, userName, showAdminLink = false }: AppHea
             </svg>
           </Link>
         ) : null}
+
+        <div className="relative" ref={notifRef}>
+          <button
+            type="button"
+            onClick={() => setNotifOpen((prev) => !prev)}
+            className="relative cursor-pointer rounded-md p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+            aria-label="Notifications"
+            aria-expanded={notifOpen}
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            {notifications.length > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-zinc-900">
+                {notifications.length}
+              </span>
+            )}
+          </button>
+
+          {notifOpen && (
+            <NotificationPanel
+              notifications={notifications}
+              onClear={handleClear}
+              onClearAll={handleClearAll}
+            />
+          )}
+        </div>
 
         <div className="relative h-8 w-8" ref={menuRef}>
           <button

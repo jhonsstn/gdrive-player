@@ -38,3 +38,13 @@ model UserFolderLastSeen {
 
   @@unique([userEmail, folderId])
 }
+
+model UserNotificationBaseline {
+  id           String   @id @default(cuid())
+  userEmail    String
+  folderId     String
+  baselineDate DateTime
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userEmail, folderId])
+}

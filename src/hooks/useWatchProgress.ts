@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
-import { useWatchProgressBatch, useLastSeen, invalidateAfterProgressUpdate } from "@/hooks/api";
+import { useWatchProgressBatch, useLastSeen, useNotificationBaselines, invalidateAfterProgressUpdate } from "@/hooks/api";
 
 export type VideoMeta = Record<string, { folderId: string; modifiedTime: string | null; name: string }>;
 
@@ -10,6 +10,7 @@ const FLUSH_INTERVAL_MS = 5_000;
 const WATCHED_THRESHOLD = 0.9;
 const EMPTY_PROGRESS: Record<string, { currentTime: number; duration: number; watched: boolean }> = {};
 const EMPTY_LAST_SEEN: Record<string, string> = {};
+const EMPTY_BASELINES: Record<string, string> = {};
 
 export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
   const { data: progressData, mutate: mutateProgress } = useWatchProgressBatch(videoIds);
@@ -26,6 +27,9 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
   const { data: lastSeenData, mutate: mutateLastSeen } = useLastSeen(folderIds);
   const lastSeenMap = useMemo(() => lastSeenData?.lastSeen ?? EMPTY_LAST_SEEN, [lastSeenData]);
   const lastSeenLoaded = !!lastSeenData;
+
+  const { data: baselinesData } = useNotificationBaselines(folderIds);
+  const baselinesMap = useMemo(() => baselinesData?.baselines ?? EMPTY_BASELINES, [baselinesData]);
 
   const bufferRef = useRef<{
     videoId: string;
@@ -172,7 +176,7 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
   // Compute effective last-seen per folder (min modifiedTime as fallback for first visit)
   const effectiveLastSeen = useMemo(() => {
     const result: Record<string, string> = { ...lastSeenMap };
-    // For folders with no DB record, use minimum modifiedTime (all videos show as NEW)
+    // For folders with no DB record, use minimum modifiedTime (all videos show as NOT SEEN)
     for (const fId of folderIds) {
       if (!result[fId]) {
         let minTime: string | null = null;
@@ -193,7 +197,8 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
     return result;
   }, [lastSeenMap, folderIds, videoMeta]);
 
-  const isNew = useCallback(
+  // NOT SEEN: video is newer than last-seen threshold and unwatched
+  const isNotSeen = useCallback(
     (videoId: string): boolean => {
       if (!lastSeenLoaded) return false;
       const meta = videoMeta[videoId];
@@ -205,5 +210,17 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
     [videoMeta, effectiveLastSeen, isWatched, lastSeenLoaded],
   );
 
-  return { recordTime, flush, getInitialTime, isWatched, isNew };
+  // NEW: video is newer than notification baseline (genuinely new content)
+  const isNew = useCallback(
+    (videoId: string): boolean => {
+      const meta = videoMeta[videoId];
+      if (!meta?.modifiedTime) return false;
+      const baseline = baselinesMap[meta.folderId];
+      if (!baseline) return false;
+      return meta.modifiedTime > baseline;
+    },
+    [videoMeta, baselinesMap],
+  );
+
+  return { recordTime, flush, getInitialTime, isWatched, isNotSeen, isNew };
 }

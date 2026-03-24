@@ -7,7 +7,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { sortByNaturalName, type SortDirection } from "@/lib/sort";
 import { Badge } from "@/components/ui/Badge";
 import { SortButton } from "@/components/ui/SortButton";
-import { useFolders, useFoldersHasNew, useContinueWatching } from "@/hooks/api";
+import { useFolders, useFoldersHasNew, useContinueWatching, useNotifications } from "@/hooks/api";
 
 type FolderSelectionClientProps = {
   userImage?: string | null;
@@ -28,7 +28,7 @@ export function FolderSelectionClient({
 
   const folderIds = useMemo(() => folders.map((f) => f.folderId), [folders]);
   const { data: hasNewData } = useFoldersHasNew(folderIds);
-  const newFolderIds = useMemo(() => {
+  const notSeenFolderIds = useMemo(() => {
     if (!hasNewData?.hasNew) return new Set<string>();
     return new Set(
       Object.entries(hasNewData.hasNew)
@@ -36,6 +36,12 @@ export function FolderSelectionClient({
         .map(([k]) => k),
     );
   }, [hasNewData]);
+
+  const { data: notifData } = useNotifications();
+  const newFolderIds = useMemo(() => {
+    if (!notifData?.notifications) return new Set<string>();
+    return new Set(notifData.notifications.map((n) => n.folderId));
+  }, [notifData]);
 
   const { data: cwData, isLoading: isContinueWatchingLoading } = useContinueWatching();
   const continueWatching = cwData?.items ?? [];
@@ -200,9 +206,11 @@ export function FolderSelectionClient({
                       <h3 className="truncate text-base font-medium text-zinc-100 transition-colors group-hover:text-blue-400">
                         {folder.name ?? folder.folderId}
                       </h3>
-                      {newFolderIds.has(folder.folderId) && (
+                      {newFolderIds.has(folder.folderId) ? (
                         <Badge size="sm">New</Badge>
-                      )}
+                      ) : notSeenFolderIds.has(folder.folderId) ? (
+                        <Badge size="sm">Not seen</Badge>
+                      ) : null}
                     </div>
                   </div>
                 </div>

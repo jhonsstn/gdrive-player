@@ -19,6 +19,7 @@ type PlaylistPanelProps = {
   onSelect: (videoId: string) => void;
   isWatched?: (videoId: string) => boolean;
   isNew?: (videoId: string) => boolean;
+  isNotSeen?: (videoId: string) => boolean;
   hasMore?: boolean;
   onLoadMore?: () => void;
   isLoadingMore?: boolean;
@@ -30,6 +31,7 @@ export function PlaylistPanel({
   onSelect,
   isWatched,
   isNew,
+  isNotSeen,
   hasMore,
   onLoadMore,
   isLoadingMore,
@@ -69,7 +71,8 @@ export function PlaylistPanel({
           {videos.map((video, index) => {
             const active = video.id === currentVideoId;
             const watched = isWatched?.(video.id) ?? false;
-            const newVideo = !watched && (isNew?.(video.id) ?? false);
+            const genuinelyNew = !watched && (isNew?.(video.id) ?? false);
+            const notSeen = !watched && !genuinelyNew && (isNotSeen?.(video.id) ?? false);
 
             return (
               <button
@@ -116,8 +119,10 @@ export function PlaylistPanel({
                     >
                       <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
-                  ) : newVideo ? (
+                  ) : genuinelyNew ? (
                     <Badge>NEW</Badge>
+                  ) : notSeen ? (
+                    <Badge>NOT SEEN</Badge>
                   ) : null}
                 </div>
               </button>

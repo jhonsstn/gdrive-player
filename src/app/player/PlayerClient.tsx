@@ -64,7 +64,7 @@ export function PlayerClient({
     return meta;
   }, [videos]);
 
-  const { recordTime, flush, getInitialTime, isWatched, isNew } = useWatchProgress(
+  const { recordTime, flush, getInitialTime, isWatched, isNotSeen, isNew } = useWatchProgress(
     videoIds,
     videoMeta,
   );
@@ -158,6 +158,7 @@ export function PlayerClient({
               onSelect={handleSelect}
               isWatched={isWatched}
               isNew={isNew}
+              isNotSeen={isNotSeen}
               hasMore={hasMore}
               onLoadMore={loadMore}
               isLoadingMore={isLoadingMore}
