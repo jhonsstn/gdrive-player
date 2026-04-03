@@ -40,12 +40,11 @@ export async function PUT(request: Request) {
   }
 
   const body = await request.json();
-  const { videoId, currentTime, duration, folderId, videoModifiedTime, videoName } = body as {
+  const { videoId, currentTime, duration, folderId, videoName } = body as {
     videoId?: string;
     currentTime?: number;
     duration?: number;
     folderId?: string;
-    videoModifiedTime?: string;
     videoName?: string;
   };
 
@@ -79,39 +78,6 @@ export async function PUT(request: Request) {
       ...(videoName ? { videoName } : {}),
     },
   });
-
-  if (watched && folderId && videoModifiedTime) {
-    const newDate = new Date(videoModifiedTime);
-    if (!isNaN(newDate.getTime())) {
-      const existing = await db.userFolderLastSeen.findUnique({
-        where: {
-          userEmail_folderId: {
-            userEmail: session.user.email,
-            folderId,
-          },
-        },
-      });
-
-      if (!existing || newDate > existing.lastSeenDate) {
-        await db.userFolderLastSeen.upsert({
-          where: {
-            userEmail_folderId: {
-              userEmail: session.user.email,
-              folderId,
-            },
-          },
-          create: {
-            userEmail: session.user.email,
-            folderId,
-            lastSeenDate: newDate,
-          },
-          update: {
-            lastSeenDate: newDate,
-          },
-        });
-      }
-    }
-  }
 
   return NextResponse.json({ ok: true, watched });
 }
