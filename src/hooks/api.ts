@@ -48,7 +48,7 @@ export function useFoldersHasNew(folderIds: string[]) {
     ? `/api/folders/has-new?folderIds=${folderIds.join(",")}`
     : null;
 
-  return useSWR<{ hasNew: Record<string, boolean> }>(key, {
+  return useSWR<{ hasNew: Record<string, boolean>; hasUnwatched: Record<string, boolean> }>(key, {
     dedupingInterval: 60 * 1000,
     revalidateOnFocus: true,
   });
@@ -115,43 +115,6 @@ export function useWatchProgressBatch(videoIds: string[]) {
 
   return useSWR<{ progress: Record<string, ProgressEntry> }>(key, {
     dedupingInterval: 30 * 1000,
-  });
-}
-
-// ── Last Seen ──
-
-export function useLastSeen(folderIds: string[]) {
-  const key = folderIds.length > 0
-    ? `/api/progress/last-seen?folderIds=${folderIds.join(",")}`
-    : null;
-
-  return useSWR<{ lastSeen: Record<string, string> }>(key, {
-    dedupingInterval: 5 * 60 * 1000,
-  });
-}
-
-// ── Notifications ──
-
-type Notification = {
-  folderId: string;
-  folderName: string;
-  newCount: number;
-};
-
-export function useNotifications() {
-  return useSWR<{ notifications: Notification[] }>("/api/notifications", {
-    dedupingInterval: 60 * 1000,
-    revalidateOnFocus: true,
-  });
-}
-
-export function useNotificationBaselines(folderIds: string[]) {
-  const key = folderIds.length > 0
-    ? `/api/notifications/baselines?folderIds=${folderIds.join(",")}`
-    : null;
-
-  return useSWR<{ baselines: Record<string, string> }>(key, {
-    dedupingInterval: 5 * 60 * 1000,
   });
 }
 
