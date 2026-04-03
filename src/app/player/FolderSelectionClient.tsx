@@ -7,7 +7,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { sortByNaturalName, type SortDirection } from "@/lib/sort";
 import { Badge } from "@/components/ui/Badge";
 import { SortButton } from "@/components/ui/SortButton";
-import { useFolders, useFoldersHasNew, useContinueWatching, useNotifications } from "@/hooks/api";
+import { useFolders, useFoldersHasNew, useContinueWatching } from "@/hooks/api";
 
 type FolderSelectionClientProps = {
   userImage?: string | null;
@@ -28,7 +28,8 @@ export function FolderSelectionClient({
 
   const folderIds = useMemo(() => folders.map((f) => f.folderId), [folders]);
   const { data: hasNewData } = useFoldersHasNew(folderIds);
-  const notSeenFolderIds = useMemo(() => {
+
+  const newFolderIds = useMemo(() => {
     if (!hasNewData?.hasNew) return new Set<string>();
     return new Set(
       Object.entries(hasNewData.hasNew)
@@ -37,11 +38,14 @@ export function FolderSelectionClient({
     );
   }, [hasNewData]);
 
-  const { data: notifData } = useNotifications();
-  const newFolderIds = useMemo(() => {
-    if (!notifData?.notifications) return new Set<string>();
-    return new Set(notifData.notifications.map((n) => n.folderId));
-  }, [notifData]);
+  const notSeenFolderIds = useMemo(() => {
+    if (!hasNewData?.hasUnwatched) return new Set<string>();
+    return new Set(
+      Object.entries(hasNewData.hasUnwatched)
+        .filter(([, v]) => v)
+        .map(([k]) => k),
+    );
+  }, [hasNewData]);
 
   const { data: cwData, isLoading: isContinueWatchingLoading } = useContinueWatching();
   const continueWatching = cwData?.items ?? [];
