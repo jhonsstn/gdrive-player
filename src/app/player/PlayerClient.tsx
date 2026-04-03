@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { mutate as globalMutate } from "swr";
 
 import { AppHeader } from "@/components/AppHeader";
 import { PlaylistPanel } from "@/components/player/PlaylistPanel";
@@ -64,10 +65,41 @@ export function PlayerClient({
     return meta;
   }, [videos]);
 
-  const { recordTime, flush, getInitialTime, isWatched, isNotSeen, isNew } = useWatchProgress(
+  const { recordTime, flush, getInitialTime, isWatched } = useWatchProgress(
     videoIds,
     videoMeta,
   );
+
+  // On folder entry: set lastSeenDate to latest video modifiedTime.
+  // This clears the "New" badge for this folder.
+  const latestVideoTime = useMemo(() => {
+    if (videos.length === 0) return null;
+    return videos.reduce<string | null>((latest, v) => {
+      if (!v.modifiedTime) return latest;
+      if (!latest || v.modifiedTime > latest) return v.modifiedTime;
+      return latest;
+    }, null);
+  }, [videos]);
+
+  const hasUpdatedLastSeen = useRef(false);
+  useEffect(() => {
+    if (!latestVideoTime || hasUpdatedLastSeen.current) return;
+    hasUpdatedLastSeen.current = true;
+
+    void fetch("/api/progress/last-seen", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ folderId, videoModifiedTime: latestVideoTime }),
+    });
+
+    // Revalidate has-new cache so bell count updates
+    void globalMutate(
+      (key: unknown) =>
+        typeof key === "string" && key.startsWith("/api/folders/has-new"),
+      undefined,
+      { revalidate: true },
+    );
+  }, [folderId, latestVideoTime]);
 
   const currentIndex = useMemo(
     () => videos.findIndex((video) => video.id === currentVideoId),
@@ -157,8 +189,6 @@ export function PlayerClient({
               currentVideoId={currentVideoId}
               onSelect={handleSelect}
               isWatched={isWatched}
-              isNew={isNew}
-              isNotSeen={isNotSeen}
               hasMore={hasMore}
               onLoadMore={loadMore}
               isLoadingMore={isLoadingMore}
