@@ -154,15 +154,16 @@ describe("/api/folders/has-new", () => {
     expect(data.hasUnwatched).toEqual({ f1: false });
   });
 
-  it("returns hasUnwatched in response for all existing tests (smoke check)", async () => {
+  it("returns hasUnwatched=false when watchProgress has no unwatched entries for folder", async () => {
     mocks.auth.mockResolvedValue({ user: { email: "u@t.com" }, accessToken: "tok" });
     mocks.findMany.mockResolvedValue([]);
     mocks.getLatestVideoModifiedTime.mockResolvedValue("2024-06-01T00:00:00Z");
+    // watchProgressFindMany defaults to [] from beforeEach
 
     const request = new Request("http://localhost/api/folders/has-new?folderIds=f1");
     const response = await GET(request as never);
     const data = await response.json();
 
-    expect(data).toHaveProperty("hasUnwatched");
+    expect(data.hasUnwatched).toEqual({ f1: false });
   });
 });
