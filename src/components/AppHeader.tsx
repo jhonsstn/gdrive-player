@@ -3,9 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import { useNotifications } from "@/hooks/api";
+import { useFolders, useFoldersHasNew } from "@/hooks/api";
 import { NotificationPanel } from "@/components/NotificationPanel";
 
 type AppHeaderProps = {
@@ -20,8 +20,16 @@ export function AppHeader({ userImage, userName, showAdminLink = false }: AppHea
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
-  const { data: notifData, mutate: mutateNotifications } = useNotifications();
-  const notifications = notifData?.notifications ?? [];
+  const { data: foldersData } = useFolders();
+  const folders = useMemo(() => foldersData?.folders ?? [], [foldersData]);
+  const folderIds = useMemo(() => folders.map((f) => f.folderId), [folders]);
+
+  const { data: hasNewData, mutate: mutateHasNew } = useFoldersHasNew(folderIds);
+
+  const newFolders = useMemo(() => {
+    if (!hasNewData?.hasNew) return [];
+    return folders.filter((f) => hasNewData.hasNew[f.folderId]);
+  }, [folders, hasNewData]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -42,44 +50,55 @@ export function AppHeader({ userImage, userName, showAdminLink = false }: AppHea
     };
   }, [menuOpen, notifOpen]);
 
-  function handleClear(folderIds: string[]) {
-    // Optimistically remove cleared folders from the list
-    void mutateNotifications(
+  function handleClear(folderId: string) {
+    // Optimistically remove from new list
+    void mutateHasNew(
       (prev) => {
         if (!prev) return prev;
-        return {
-          notifications: prev.notifications.filter(
-            (n) => !folderIds.includes(n.folderId),
-          ),
-        };
+        return { ...prev, hasNew: { ...prev.hasNew, [folderId]: false } };
       },
       { revalidate: false },
     );
 
-    // Fire and forget — silent backend update
-    void fetch("/api/notifications/clear", {
+    // Update server — use current time so it's always newer than any video
+    void fetch("/api/progress/last-seen", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ folderIds }),
-    });
-
-    // Close panel if navigating (single folder clear from row click)
-    if (folderIds.length === 1) {
-      setNotifOpen(false);
-    }
-  }
-
-  function handleClearAll() {
-    void mutateNotifications({ notifications: [] }, { revalidate: false });
-
-    void fetch("/api/notifications/clear", {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ all: true }),
+      body: JSON.stringify({ folderId, videoModifiedTime: new Date().toISOString() }),
     });
 
     setNotifOpen(false);
   }
+
+  function handleClearAll() {
+    const allNewFolderIds = newFolders.map((f) => f.folderId);
+
+    void mutateHasNew(
+      (prev) => {
+        if (!prev) return prev;
+        const updated = { ...prev.hasNew };
+        for (const id of allNewFolderIds) updated[id] = false;
+        return { ...prev, hasNew: updated };
+      },
+      { revalidate: false },
+    );
+
+    const now = new Date().toISOString();
+    for (const folderId of allNewFolderIds) {
+      void fetch("/api/progress/last-seen", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ folderId, videoModifiedTime: now }),
+      });
+    }
+
+    setNotifOpen(false);
+  }
+
+  const notifFolders = newFolders.map((f) => ({
+    folderId: f.folderId,
+    folderName: f.name ?? f.folderId,
+  }));
 
   return (
     <header className="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-8 py-4">
@@ -140,16 +159,16 @@ export function AppHeader({ userImage, userName, showAdminLink = false }: AppHea
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
               <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
             </svg>
-            {notifications.length > 0 && (
+            {newFolders.length > 0 && (
               <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-zinc-900">
-                {notifications.length}
+                {newFolders.length}
               </span>
             )}
           </button>
 
           {notifOpen && (
             <NotificationPanel
-              notifications={notifications}
+              folders={notifFolders}
               onClear={handleClear}
               onClearAll={handleClearAll}
             />
