@@ -5,7 +5,6 @@ vi.stubGlobal("fetch", mockFetch);
 
 import {
   DriveRequestError,
-  countVideosSince,
   getFolderName,
   getStreamPassthroughHeaders,
   listFolderVideos,
@@ -123,31 +122,6 @@ describe("drive", () => {
       mockFetch.mockResolvedValue(errorResponse(401, "Unauthorized"));
 
       await expect(listFolderVideos("token", "folder1")).rejects.toThrow(DriveRequestError);
-    });
-  });
-
-  describe("countVideosSince", () => {
-    it("returns count of files since a date", async () => {
-      mockFetch.mockResolvedValue(
-        jsonResponse({ files: [{ id: "a" }, { id: "b" }, { id: "c" }] }),
-      );
-
-      const count = await countVideosSince("token", "folder1", new Date("2024-01-01"));
-      expect(count).toBe(3);
-    });
-
-    it("returns 0 when no files match", async () => {
-      mockFetch.mockResolvedValue(jsonResponse({ files: [] }));
-
-      const count = await countVideosSince("token", "folder1", new Date("2024-01-01"));
-      expect(count).toBe(0);
-    });
-
-    it("returns 0 when files array is missing", async () => {
-      mockFetch.mockResolvedValue(jsonResponse({}));
-
-      const count = await countVideosSince("token", "folder1", new Date("2024-01-01"));
-      expect(count).toBe(0);
     });
   });
 

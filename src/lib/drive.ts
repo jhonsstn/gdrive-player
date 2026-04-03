@@ -230,34 +230,6 @@ export async function getLatestVideoModifiedTime(
   return latestTime;
 }
 
-export async function countVideosSince(
-  accessToken: string,
-  folderId: string,
-  sinceDate: Date,
-): Promise<number> {
-  const mimeTypeFilter = [...ALLOWED_VIDEO_MIME_TYPES].map((m) => `mimeType='${m}'`).join(" or ");
-  const isoDate = sinceDate.toISOString();
-  const search = new URLSearchParams({
-    q: `'${folderId}' in parents and trashed=false and (${mimeTypeFilter}) and modifiedTime > '${isoDate}'`,
-    fields: "files(id)",
-    pageSize: "1000",
-    supportsAllDrives: "true",
-    includeItemsFromAllDrives: "true",
-  });
-
-  const response = await fetch(`${DRIVE_API_BASE_URL}/files?${search.toString()}`, {
-    headers: makeAuthHeaders(accessToken),
-  });
-
-  if (!response.ok) {
-    const message = await parseDriveErrorMessage(response);
-    throw new DriveRequestError(message, response.status);
-  }
-
-  const data = (await response.json()) as { files?: Array<{ id?: string }> };
-  return data.files?.length ?? 0;
-}
-
 export async function streamDriveFile(
   accessToken: string,
   fileId: string,
