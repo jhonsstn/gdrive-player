@@ -27,11 +27,21 @@ export async function GET(request: Request) {
   const userEmail = session.user.email;
   const accessToken = session.accessToken;
 
-  const rows = await db.userFolderLastSeen.findMany({
-    where: { userEmail, folderId: { in: folderIds } },
-  });
+  const [rows, unwatchedRows] = await Promise.all([
+    db.userFolderLastSeen.findMany({
+      where: { userEmail, folderId: { in: folderIds } },
+    }),
+    db.watchProgress.findMany({
+      where: { userEmail, folderId: { in: folderIds }, watched: false },
+      select: { folderId: true },
+      distinct: ["folderId"],
+    }),
+  ]);
 
   const lastSeenMap = new Map(rows.map((r) => [r.folderId, r.lastSeenDate]));
+  const unwatchedFolderIds = new Set(
+    unwatchedRows.map((r) => r.folderId).filter((id): id is string => id !== null),
+  );
 
   const results = await Promise.all(
     folderIds.map(async (folderId) => {
@@ -50,5 +60,9 @@ export async function GET(request: Request) {
   );
 
   const hasNew: Record<string, boolean> = Object.fromEntries(results);
-  return NextResponse.json({ hasNew });
+  const hasUnwatched: Record<string, boolean> = Object.fromEntries(
+    folderIds.map((folderId) => [folderId, unwatchedFolderIds.has(folderId)]),
+  );
+
+  return NextResponse.json({ hasNew, hasUnwatched });
 }
