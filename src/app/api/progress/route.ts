@@ -21,11 +21,13 @@ export async function GET(request: Request) {
 
   const progress: Record<string, { currentTime: number; duration: number; watched: boolean }> = {};
   for (const row of rows) {
-    progress[row.folderVideoId] = {
-      currentTime: row.currentTime,
-      duration: row.duration,
-      watched: row.watched,
-    };
+    if (row.folderVideoId) {
+      progress[row.folderVideoId] = {
+        currentTime: row.currentTime,
+        duration: row.duration,
+        watched: row.watched,
+      };
+    }
   }
 
   return NextResponse.json({ progress });
