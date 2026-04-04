@@ -36,6 +36,9 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState("");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [migratingId, setMigratingId] = useState<string | null>(null);
+  const [migrateUrl, setMigrateUrl] = useState("");
+  const [migrating, setMigrating] = useState(false);
 
   const hasFolders = useMemo(() => folders.length > 0, [folders.length]);
 
@@ -77,6 +80,34 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
       setMessage({ text: "Failed to add folder.", type: "error" });
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleMigrateFolder(id: string) {
+    setMigrating(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/config/folders", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id, sourceUrl: migrateUrl }),
+      });
+
+      if (!response.ok) {
+        setMessage({ text: await readApiError(response), type: "error" });
+        return;
+      }
+
+      const parsed = (await response.json()) as { folder: ConfiguredFolder };
+      setFolders((current) => current.map((f) => (f.id === id ? parsed.folder : f)));
+      setMigratingId(null);
+      setMigrateUrl("");
+      setMessage({ text: "Folder migrated successfully.", type: "success" });
+    } catch {
+      setMessage({ text: "Failed to migrate folder.", type: "error" });
+    } finally {
+      setMigrating(false);
     }
   }
 
@@ -178,23 +209,67 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
             {displayedFolders.map((folder) => (
               <div
                 key={folder.id}
-                className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 px-6 py-5 shadow-sm"
+                className="rounded-xl border border-zinc-800 bg-zinc-900 shadow-sm"
               >
-                <div className="overflow-hidden pr-4">
-                  <p className="mb-1 font-medium text-zinc-50">{folder.name ?? "Unnamed folder"}</p>
-                  <code className="mb-2 inline-block rounded-md bg-zinc-800 px-2 py-1 text-[0.8rem] text-zinc-400">
-                    ID: {folder.folderId}
-                  </code>
-                  <div
-                    className="overflow-hidden text-[0.9rem] text-ellipsis whitespace-nowrap text-zinc-400"
-                    title={folder.sourceUrl}
-                  >
-                    {folder.sourceUrl}
+                <div className="flex items-center justify-between px-6 py-5">
+                  <div className="overflow-hidden pr-4">
+                    <p className="mb-1 font-medium text-zinc-50">{folder.name ?? "Unnamed folder"}</p>
+                    <code className="mb-2 inline-block rounded-md bg-zinc-800 px-2 py-1 text-[0.8rem] text-zinc-400">
+                      ID: {folder.folderId}
+                    </code>
+                    <div
+                      className="overflow-hidden text-[0.9rem] text-ellipsis whitespace-nowrap text-zinc-400"
+                      title={folder.sourceUrl}
+                    >
+                      {folder.sourceUrl}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setMigratingId(migratingId === folder.id ? null : folder.id);
+                        setMigrateUrl("");
+                      }}
+                    >
+                      Migrate
+                    </Button>
+                    <Button variant="destructive" onClick={() => handleDeleteFolder(folder.id)}>
+                      Remove
+                    </Button>
                   </div>
                 </div>
-                <Button variant="destructive" onClick={() => handleDeleteFolder(folder.id)}>
-                  Remove
-                </Button>
+                {migratingId === folder.id && (
+                  <div className="border-t border-zinc-800 px-6 py-4">
+                    <p className="mb-3 text-sm text-zinc-400">
+                      Enter the new Google Drive folder URL. Watch progress will be preserved.
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="text"
+                        value={migrateUrl}
+                        onChange={(e) => setMigrateUrl(e.target.value)}
+                        placeholder="https://drive.google.com/drive/folders/..."
+                        disabled={migrating}
+                        className="flex-1 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-50 transition-all duration-200 placeholder:text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                      />
+                      <Button
+                        variant="primary"
+                        disabled={migrating || !migrateUrl.trim()}
+                        onClick={() => handleMigrateFolder(folder.id)}
+                      >
+                        {migrating ? "Saving..." : "Save"}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        disabled={migrating}
+                        onClick={() => { setMigratingId(null); setMigrateUrl(""); }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -4,8 +4,11 @@ const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   isAdminSession: vi.fn(),
   findMany: vi.fn(),
+  findUnique: vi.fn(),
   create: vi.fn(),
+  update: vi.fn(),
   delete: vi.fn(),
+  transaction: vi.fn(),
   getFolderName: vi.fn(),
 }));
 
@@ -21,9 +24,14 @@ vi.mock("@/lib/db", () => ({
   db: {
     configuredFolder: {
       findMany: mocks.findMany,
+      findUnique: mocks.findUnique,
       create: mocks.create,
+      update: mocks.update,
       delete: mocks.delete,
     },
+    watchProgress: { updateMany: vi.fn() },
+    userFolderLastSeen: { updateMany: vi.fn() },
+    $transaction: mocks.transaction,
   },
 }));
 
@@ -31,7 +39,8 @@ vi.mock("@/lib/drive", () => ({
   getFolderName: mocks.getFolderName,
 }));
 
-import { GET, POST } from "@/app/api/config/folders/route";
+import { Prisma } from "@prisma/client";
+import { GET, PATCH, POST } from "@/app/api/config/folders/route";
 
 describe("/api/config/folders", () => {
   beforeEach(() => {
@@ -81,6 +90,173 @@ describe("/api/config/folders", () => {
         folderId: "1AbCdEfGhIjKlMnOpQr",
         name: "My Videos Folder",
       },
+    });
+  });
+
+  describe("PATCH /api/config/folders", () => {
+    const adminSession = {
+      user: { email: "admin@example.com" },
+      accessToken: "test-token",
+    };
+
+    const existingFolder = {
+      id: "cfg_1",
+      folderId: "oldFolderDriveId",
+      name: "Old Folder",
+      sourceUrl: "https://drive.google.com/drive/folders/oldFolderDriveId",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const newSourceUrl = "https://drive.google.com/drive/folders/newFolderDriveId";
+
+    function makeRequest(body: unknown) {
+      return new Request("http://localhost/api/config/folders", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    }
+
+    it("returns 401 when not authenticated", async () => {
+      mocks.auth.mockResolvedValue(null);
+
+      const response = await PATCH(makeRequest({ id: "cfg_1", sourceUrl: newSourceUrl }));
+
+      expect(response.status).toBe(401);
+    });
+
+    it("returns 403 for non-admin users", async () => {
+      mocks.auth.mockResolvedValue({ user: { email: "user@example.com" } });
+      mocks.isAdminSession.mockReturnValue(false);
+
+      const response = await PATCH(makeRequest({ id: "cfg_1", sourceUrl: newSourceUrl }));
+
+      expect(response.status).toBe(403);
+    });
+
+    it("returns 400 when id is missing", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+
+      const response = await PATCH(makeRequest({ sourceUrl: newSourceUrl }));
+
+      expect(response.status).toBe(400);
+      const body = await response.json() as { error: string };
+      expect(body.error).toMatch(/id/i);
+    });
+
+    it("returns 400 when sourceUrl is missing", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+
+      const response = await PATCH(makeRequest({ id: "cfg_1" }));
+
+      expect(response.status).toBe(400);
+      const body = await response.json() as { error: string };
+      expect(body.error).toMatch(/sourceUrl/i);
+    });
+
+    it("returns 400 for invalid Drive URL", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+
+      const response = await PATCH(makeRequest({ id: "cfg_1", sourceUrl: "bad url !@#" }));
+
+      expect(response.status).toBe(400);
+    });
+
+    it("returns 404 when folder not found", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+      mocks.findUnique.mockResolvedValue(null);
+
+      const response = await PATCH(makeRequest({ id: "cfg_1", sourceUrl: newSourceUrl }));
+
+      expect(response.status).toBe(404);
+    });
+
+    it("returns 400 when new URL points to the same folder", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+      mocks.findUnique.mockResolvedValue(existingFolder);
+
+      const response = await PATCH(
+        makeRequest({
+          id: "cfg_1",
+          sourceUrl: "https://drive.google.com/drive/folders/oldFolderDriveId",
+        }),
+      );
+
+      expect(response.status).toBe(400);
+      const body = await response.json() as { error: string };
+      expect(body.error).toMatch(/same folder/i);
+    });
+
+    it("returns 409 when target folder is already configured", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+      mocks.findUnique.mockResolvedValue(existingFolder);
+      mocks.getFolderName.mockResolvedValue("New Folder");
+      const uniqueError = new Prisma.PrismaClientKnownRequestError("Unique constraint", {
+        code: "P2002",
+        clientVersion: "0.0.0",
+      });
+      mocks.transaction.mockRejectedValue(uniqueError);
+
+      const response = await PATCH(makeRequest({ id: "cfg_1", sourceUrl: newSourceUrl }));
+
+      expect(response.status).toBe(409);
+    });
+
+    it("migrates folder and updates all related records", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+      mocks.findUnique.mockResolvedValue(existingFolder);
+      mocks.getFolderName.mockResolvedValue("New Folder");
+
+      const updatedFolder = {
+        ...existingFolder,
+        folderId: "newFolderDriveId",
+        sourceUrl: newSourceUrl,
+        name: "New Folder",
+      };
+
+      mocks.transaction.mockImplementation(async (ops: unknown[]) => {
+        return Promise.all(ops.map((op) => (op instanceof Promise ? op : Promise.resolve(op))));
+      });
+      mocks.update.mockResolvedValue(updatedFolder);
+
+      const response = await PATCH(makeRequest({ id: "cfg_1", sourceUrl: newSourceUrl }));
+
+      expect(response.status).toBe(200);
+      const body = await response.json() as { folder: typeof updatedFolder };
+      expect(body.folder.folderId).toBe("newFolderDriveId");
+      expect(mocks.getFolderName).toHaveBeenCalledWith("test-token", "newFolderDriveId");
+      expect(mocks.transaction).toHaveBeenCalled();
+    });
+
+    it("proceeds without name when Drive API fails", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+      mocks.findUnique.mockResolvedValue(existingFolder);
+      mocks.getFolderName.mockRejectedValue(new Error("Drive API error"));
+
+      const updatedFolder = {
+        ...existingFolder,
+        folderId: "newFolderDriveId",
+        sourceUrl: newSourceUrl,
+        name: null,
+      };
+
+      mocks.transaction.mockImplementation(async (ops: unknown[]) => {
+        return Promise.all(ops.map((op) => (op instanceof Promise ? op : Promise.resolve(op))));
+      });
+      mocks.update.mockResolvedValue(updatedFolder);
+
+      const response = await PATCH(makeRequest({ id: "cfg_1", sourceUrl: newSourceUrl }));
+
+      expect(response.status).toBe(200);
     });
   });
 });
