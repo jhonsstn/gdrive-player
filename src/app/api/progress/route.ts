@@ -40,12 +40,13 @@ export async function PUT(request: Request) {
   }
 
   const body = await request.json();
-  const { videoId, currentTime, duration, folderId, videoName } = body as {
+  const { videoId, currentTime, duration, folderId, videoName, videoModifiedTime } = body as {
     videoId?: string;
     currentTime?: number;
     duration?: number;
     folderId?: string;
     videoName?: string;
+    videoModifiedTime?: string;
   };
 
   if (!videoId || currentTime == null || !duration || duration <= 0) {
@@ -78,6 +79,28 @@ export async function PUT(request: Request) {
       ...(videoName ? { videoName } : {}),
     },
   });
+
+  // When a video is fully watched, advance watchedThrough so "Not seen" clears
+  if (watched && folderId && videoModifiedTime) {
+    const newWatchedDate = new Date(videoModifiedTime);
+    if (!isNaN(newWatchedDate.getTime())) {
+      const existing = await db.userFolderLastSeen.findUnique({
+        where: { userEmail_folderId: { userEmail: session.user.email, folderId } },
+      });
+      if (!existing?.watchedThrough || newWatchedDate > existing.watchedThrough) {
+        await db.userFolderLastSeen.upsert({
+          where: { userEmail_folderId: { userEmail: session.user.email, folderId } },
+          create: {
+            userEmail: session.user.email,
+            folderId,
+            lastSeenDate: newWatchedDate,
+            watchedThrough: newWatchedDate,
+          },
+          update: { watchedThrough: newWatchedDate },
+        });
+      }
+    }
+  }
 
   return NextResponse.json({ ok: true, watched });
 }

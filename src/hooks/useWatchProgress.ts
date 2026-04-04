@@ -20,6 +20,7 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
     duration: number;
     folderId?: string;
     videoName?: string;
+    videoModifiedTime?: string;
   } | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -27,7 +28,7 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
     const buf = bufferRef.current;
     if (!buf) return;
 
-    const { videoId, currentTime, duration, folderId, videoName } = buf;
+    const { videoId, currentTime, duration, folderId, videoName, videoModifiedTime } = buf;
     bufferRef.current = null;
 
     const watched = duration > 0 && currentTime / duration >= WATCHED_THRESHOLD;
@@ -50,7 +51,7 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
       await fetch("/api/progress", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ videoId, currentTime, duration, folderId, videoName }),
+        body: JSON.stringify({ videoId, currentTime, duration, folderId, videoName, videoModifiedTime }),
       });
 
       invalidateAfterProgressUpdate();
@@ -95,6 +96,7 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
         duration,
         folderId: meta?.folderId,
         videoName: meta?.name,
+        videoModifiedTime: meta?.modifiedTime ?? undefined,
       };
     },
     [videoMeta],

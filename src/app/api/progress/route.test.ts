@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   findMany: vi.fn(),
   upsert: vi.fn(),
+  lastSeenFindUnique: vi.fn(),
+  lastSeenUpsert: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({
@@ -16,6 +18,10 @@ vi.mock("@/lib/db", () => ({
       findMany: mocks.findMany,
       upsert: mocks.upsert,
     },
+    userFolderLastSeen: {
+      findUnique: mocks.lastSeenFindUnique,
+      upsert: mocks.lastSeenUpsert,
+    },
   },
 }));
 
@@ -24,6 +30,8 @@ import { GET, PUT } from "@/app/api/progress/route";
 describe("/api/progress", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.lastSeenFindUnique.mockResolvedValue(null);
+    mocks.lastSeenUpsert.mockResolvedValue({});
   });
 
   describe("GET", () => {
@@ -158,6 +166,55 @@ describe("/api/progress", () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.watched).toBe(false);
+    });
+
+    it("advances watchedThrough when video is watched and videoModifiedTime is provided", async () => {
+      mocks.auth.mockResolvedValue({ user: { email: "user@test.com" } });
+      mocks.upsert.mockResolvedValue({});
+      mocks.lastSeenFindUnique.mockResolvedValue(null);
+
+      const request = new Request("http://localhost/api/progress", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          videoId: "vid1",
+          currentTime: 90,
+          duration: 100,
+          folderId: "folder1",
+          videoModifiedTime: "2024-06-01T00:00:00Z",
+        }),
+      });
+      const response = await PUT(request as never);
+
+      expect(response.status).toBe(200);
+      expect(mocks.lastSeenUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: { watchedThrough: new Date("2024-06-01T00:00:00Z") },
+        }),
+      );
+    });
+
+    it("does not advance watchedThrough if existing watchedThrough is newer", async () => {
+      mocks.auth.mockResolvedValue({ user: { email: "user@test.com" } });
+      mocks.upsert.mockResolvedValue({});
+      mocks.lastSeenFindUnique.mockResolvedValue({
+        watchedThrough: new Date("2024-12-01T00:00:00Z"),
+      });
+
+      const request = new Request("http://localhost/api/progress", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          videoId: "vid1",
+          currentTime: 90,
+          duration: 100,
+          folderId: "folder1",
+          videoModifiedTime: "2024-06-01T00:00:00Z",
+        }),
+      });
+      await PUT(request as never);
+
+      expect(mocks.lastSeenUpsert).not.toHaveBeenCalled();
     });
   });
 });

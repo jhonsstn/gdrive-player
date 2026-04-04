@@ -92,12 +92,10 @@ export function PlayerClient({
       body: JSON.stringify({ folderId, videoModifiedTime: latestVideoTime }),
     });
 
-    // Revalidate has-new cache so bell count updates
+    // Revalidate has-new cache so bell count updates (no data clear — keep existing values visible during re-fetch)
     void globalMutate(
       (key: unknown) =>
         typeof key === "string" && key.startsWith("/api/folders/has-new"),
-      undefined,
-      { revalidate: true },
     );
   }, [folderId, latestVideoTime]);
 
