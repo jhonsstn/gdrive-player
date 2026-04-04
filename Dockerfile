@@ -43,8 +43,14 @@ COPY --chown=nextjs:nodejs package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
+# Install Prisma CLI globally to avoid downloading it on every container startup
+RUN npm install -g prisma
+
 # Install runtime dependencies (before switching to non-root user)
 RUN pnpm install --frozen-lockfile --prod
+
+# Create Next.js cache directory
+RUN mkdir -p .next/cache && chown nextjs:nodejs .next/cache
 
 # Create data directory for SQLite
 RUN mkdir -p /data && chown nextjs:nodejs /data
