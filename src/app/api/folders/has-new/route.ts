@@ -27,42 +27,37 @@ export async function GET(request: Request) {
   const userEmail = session.user.email;
   const accessToken = session.accessToken;
 
-  const [rows, unwatchedRows] = await Promise.all([
-    db.userFolderLastSeen.findMany({
-      where: { userEmail, folderId: { in: folderIds } },
-    }),
-    db.watchProgress.findMany({
-      where: { userEmail, folderId: { in: folderIds }, watched: false },
-      select: { folderId: true },
-      distinct: ["folderId"],
-    }),
-  ]);
+  const rows = await db.userFolderLastSeen.findMany({
+    where: { userEmail, folderId: { in: folderIds } },
+  });
 
-  const lastSeenMap = new Map(rows.map((r) => [r.folderId, r.lastSeenDate]));
-  const unwatchedFolderIds = new Set(
-    unwatchedRows.map((r) => r.folderId).filter((id): id is string => id !== null),
-  );
+  const lastSeenMap = new Map(rows.map((r) => [r.folderId, r]));
 
   const results = await Promise.all(
     folderIds.map(async (folderId) => {
       try {
         const latestTime = await getLatestVideoModifiedTime(accessToken, folderId);
-        if (!latestTime) return [folderId, false] as const;
+        if (!latestTime) return [folderId, { hasNew: false, hasNotSeen: false }] as const;
 
-        const lastSeen = lastSeenMap.get(folderId);
-        if (!lastSeen) return [folderId, true] as const;
+        const row = lastSeenMap.get(folderId);
+        const latestDate = new Date(latestTime);
 
-        return [folderId, new Date(latestTime) > lastSeen] as const;
+        const hasNew = !row ? true : latestDate > row.lastSeenDate;
+        const hasNotSeen = !row?.watchedThrough ? true : latestDate > row.watchedThrough;
+
+        return [folderId, { hasNew, hasNotSeen }] as const;
       } catch {
-        return [folderId, false] as const;
+        return [folderId, { hasNew: false, hasNotSeen: false }] as const;
       }
     }),
   );
 
-  const hasNew: Record<string, boolean> = Object.fromEntries(results);
-  const hasUnwatched: Record<string, boolean> = Object.fromEntries(
-    folderIds.map((folderId) => [folderId, unwatchedFolderIds.has(folderId)]),
-  );
+  const hasNew: Record<string, boolean> = {};
+  const hasNotSeen: Record<string, boolean> = {};
+  for (const [folderId, { hasNew: n, hasNotSeen: s }] of results) {
+    hasNew[folderId] = n;
+    hasNotSeen[folderId] = s;
+  }
 
-  return NextResponse.json({ hasNew, hasUnwatched });
+  return NextResponse.json({ hasNew, hasNotSeen });
 }

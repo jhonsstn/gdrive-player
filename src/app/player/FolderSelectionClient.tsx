@@ -29,19 +29,10 @@ export function FolderSelectionClient({
   const folderIds = useMemo(() => folders.map((f) => f.folderId), [folders]);
   const { data: hasNewData } = useFoldersHasNew(folderIds);
 
-  const newFolderIds = useMemo(() => {
-    if (!hasNewData?.hasNew) return new Set<string>();
-    return new Set(
-      Object.entries(hasNewData.hasNew)
-        .filter(([, v]) => v)
-        .map(([k]) => k),
-    );
-  }, [hasNewData]);
-
   const notSeenFolderIds = useMemo(() => {
-    if (!hasNewData?.hasUnwatched) return new Set<string>();
+    if (!hasNewData?.hasNotSeen) return new Set<string>();
     return new Set(
-      Object.entries(hasNewData.hasUnwatched)
+      Object.entries(hasNewData.hasNotSeen)
         .filter(([, v]) => v)
         .map(([k]) => k),
     );
@@ -210,9 +201,7 @@ export function FolderSelectionClient({
                       <h3 className="truncate text-base font-medium text-zinc-100 transition-colors group-hover:text-blue-400">
                         {folder.name ?? folder.folderId}
                       </h3>
-                      {newFolderIds.has(folder.folderId) ? (
-                        <Badge size="sm">New</Badge>
-                      ) : notSeenFolderIds.has(folder.folderId) ? (
+                      {notSeenFolderIds.has(folder.folderId) ? (
                         <Badge size="sm">Not seen</Badge>
                       ) : null}
                     </div>

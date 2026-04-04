@@ -48,7 +48,7 @@ export function useFoldersHasNew(folderIds: string[]) {
     ? `/api/folders/has-new?folderIds=${folderIds.join(",")}`
     : null;
 
-  return useSWR<{ hasNew: Record<string, boolean>; hasUnwatched: Record<string, boolean> }>(key, {
+  return useSWR<{ hasNew: Record<string, boolean>; hasNotSeen: Record<string, boolean> }>(key, {
     dedupingInterval: 60 * 1000,
     revalidateOnFocus: true,
   });
@@ -123,9 +123,7 @@ export function useWatchProgressBatch(videoIds: string[]) {
 export function invalidateAfterProgressUpdate() {
   void globalMutate(
     (key: unknown) =>
-      typeof key === "string" &&
-      (key.startsWith("/api/progress/continue-watching") ||
-        key.startsWith("/api/folders/has-new")),
+      typeof key === "string" && key.startsWith("/api/progress/continue-watching"),
     undefined,
     { revalidate: true },
   );
