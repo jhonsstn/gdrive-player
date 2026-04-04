@@ -20,6 +20,12 @@ services:
     volumes:
       - app-data:/data
     restart: unless-stopped
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
 
 volumes:
   app-data:
