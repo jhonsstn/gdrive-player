@@ -39,6 +39,7 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
   const [migratingId, setMigratingId] = useState<string | null>(null);
   const [migrateUrl, setMigrateUrl] = useState("");
   const [migrating, setMigrating] = useState(false);
+  const [migrateMessage, setMigrateMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
   const hasFolders = useMemo(() => folders.length > 0, [folders.length]);
 
@@ -85,7 +86,7 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
 
   async function handleMigrateFolder(id: string) {
     setMigrating(true);
-    setMessage(null);
+    setMigrateMessage(null);
 
     try {
       const response = await fetch("/api/config/folders", {
@@ -95,17 +96,15 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
       });
 
       if (!response.ok) {
-        setMessage({ text: await readApiError(response), type: "error" });
+        setMigrateMessage({ text: await readApiError(response), type: "error" });
         return;
       }
 
       const parsed = (await response.json()) as { folder: ConfiguredFolder };
       setFolders((current) => current.map((f) => (f.id === id ? parsed.folder : f)));
-      setMigratingId(null);
-      setMigrateUrl("");
-      setMessage({ text: "Folder migrated successfully.", type: "success" });
+      setMigrateMessage({ text: "Folder migrated successfully.", type: "success" });
     } catch {
-      setMessage({ text: "Failed to migrate folder.", type: "error" });
+      setMigrateMessage({ text: "Failed to migrate folder.", type: "error" });
     } finally {
       setMigrating(false);
     }
@@ -230,6 +229,7 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
                       onClick={() => {
                         setMigratingId(migratingId === folder.id ? null : folder.id);
                         setMigrateUrl("");
+                        setMigrateMessage(null);
                       }}
                     >
                       Migrate
@@ -263,11 +263,14 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
                       <Button
                         variant="secondary"
                         disabled={migrating}
-                        onClick={() => { setMigratingId(null); setMigrateUrl(""); }}
+                        onClick={() => { setMigratingId(null); setMigrateUrl(""); setMigrateMessage(null); }}
                       >
                         Cancel
                       </Button>
                     </div>
+                    {migrateMessage ? (
+                      <StatusMessage type={migrateMessage.type} message={migrateMessage.text} />
+                    ) : null}
                   </div>
                 )}
               </div>
