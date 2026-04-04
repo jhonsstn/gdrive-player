@@ -123,5 +123,5 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
     [progressMap],
   );
 
-  return { recordTime, flush, getInitialTime, isWatched };
+  return { recordTime, flush, getInitialTime, isWatched, mutateProgress };
 }

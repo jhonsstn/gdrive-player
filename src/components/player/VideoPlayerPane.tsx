@@ -4,11 +4,14 @@ import { parseEpisodeName } from "@/lib/episode-name";
 import "video.js/dist/video-js.css";
 import { useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/Button";
+import { DropdownMenu } from "@/components/ui/DropdownMenu";
 
 type VideoEntry = {
   id: string;
   name: string;
   mimeType: string;
+  folderId: string;
+  modifiedTime: string | null;
 };
 
 type VideoPlayerPaneProps = {
@@ -20,6 +23,8 @@ type VideoPlayerPaneProps = {
   initialTime?: number;
   onTimeUpdate?: (currentTime: number, duration: number) => void;
   onEnded?: () => void;
+  isWatched?: boolean;
+  onToggleWatched?: (watched: boolean) => void;
 };
 
 type VjsPlayer = {
@@ -85,6 +90,8 @@ export function VideoPlayerPane({
   initialTime,
   onTimeUpdate,
   onEnded,
+  isWatched,
+  onToggleWatched,
 }: VideoPlayerPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<VjsPlayer | null>(null);
@@ -259,9 +266,32 @@ export function VideoPlayerPane({
   return (
     <section className="flex flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-0 shadow-sm">
       <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-800 px-6 py-4">
-        <h2 className="overflow-hidden text-base font-semibold tracking-tight text-ellipsis whitespace-nowrap">
-          {video ? parseEpisodeName(video.name) : "Select a video"}
-        </h2>
+        <div className="flex items-center gap-3 min-w-0">
+          {video && onToggleWatched && (
+            <DropdownMenu
+              trigger={
+                <div className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-zinc-700 text-zinc-400">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="12" cy="12" r="1.5"></circle>
+                    <circle cx="12" cy="6" r="1.5"></circle>
+                    <circle cx="12" cy="18" r="1.5"></circle>
+                  </svg>
+                </div>
+              }
+              items={[
+                {
+                  label: isWatched ? "Mark as unwatched" : "Mark as watched",
+                  onClick: () => onToggleWatched(!isWatched),
+                  icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">{isWatched ? <><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></> : <polyline points="20 6 9 17 4 12"></polyline>}</svg>
+                }
+              ]}
+              align="left"
+            />
+          )}
+          <h2 className="overflow-hidden text-base font-semibold tracking-tight text-ellipsis whitespace-nowrap">
+            {video ? parseEpisodeName(video.name) : "Select a video"}
+          </h2>
+        </div>
 
         <div className="flex gap-2">
           <Button

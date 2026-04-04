@@ -6,6 +6,7 @@ import { mutate as globalMutate } from "swr";
 import { AppHeader } from "@/components/AppHeader";
 import { PlaylistPanel } from "@/components/player/PlaylistPanel";
 import { VideoPlayerPane } from "@/components/player/VideoPlayerPane";
+import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { useWatchProgress, type VideoMeta } from "@/hooks/useWatchProgress";
 import { SortButton } from "@/components/ui/SortButton";
 import { useVideos } from "@/hooks/api";
@@ -65,10 +66,73 @@ export function PlayerClient({
     return meta;
   }, [videos]);
 
-  const { recordTime, flush, getInitialTime, isWatched } = useWatchProgress(
+  const { recordTime, flush, getInitialTime, isWatched, mutateProgress } = useWatchProgress(
     videoIds,
     videoMeta,
   );
+
+  async function handleToggleWatched(watched: boolean) {
+    if (!currentVideo) return;
+    
+    void mutateProgress(
+      (prev) => {
+        if (!prev) return prev;
+        return {
+          progress: {
+            ...prev.progress,
+            [currentVideo.id]: { currentTime: watched ? 1 : 0, duration: 1, watched },
+          },
+        };
+      },
+      { revalidate: false },
+    );
+    
+    await fetch("/api/progress/mark", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        videoId: currentVideo.id,
+        watched,
+        folderId: currentVideo.folderId,
+        videoName: currentVideo.name,
+        videoModifiedTime: currentVideo.modifiedTime,
+      }),
+    });
+    
+    void globalMutate(
+      (key: unknown) =>
+        typeof key === "string" && key.startsWith("/api/progress"),
+    );
+  }
+
+  async function handleMarkAll(watched: boolean) {
+    void mutateProgress(
+      (prev) => {
+        if (!prev) return prev;
+        const newProgress = { ...prev.progress };
+        for (const video of videos) {
+          newProgress[video.id] = { currentTime: watched ? 1 : 0, duration: 1, watched };
+        }
+        return { progress: newProgress };
+      },
+      { revalidate: false },
+    );
+    
+    await fetch("/api/progress/mark-all", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ folderId, watched }),
+    });
+    
+    void globalMutate(
+      (key: unknown) =>
+        typeof key === "string" && key.startsWith("/api/progress"),
+    );
+    void globalMutate(
+      (key: unknown) =>
+        typeof key === "string" && key.startsWith("/api/folders/has-new"),
+    );
+  }
 
   // On folder entry: set lastSeenDate to latest video modifiedTime.
   // This clears the "New" badge for this folder.
@@ -141,7 +205,33 @@ export function PlayerClient({
 
       <main className="mx-auto w-full max-w-[1366px] flex-1 p-8">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-xl font-semibold tracking-tight">{folderName ?? "My Videos"}</h2>
+          <div className="flex items-center gap-3">
+            <DropdownMenu
+              trigger={
+                <div className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-zinc-800 text-zinc-400">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="12" cy="12" r="1.5"></circle>
+                    <circle cx="12" cy="6" r="1.5"></circle>
+                    <circle cx="12" cy="18" r="1.5"></circle>
+                  </svg>
+                </div>
+              }
+              items={[
+                {
+                  label: "Mark all as watched",
+                  onClick: () => handleMarkAll(true),
+                  icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                },
+                {
+                  label: "Mark all as unwatched",
+                  onClick: () => handleMarkAll(false),
+                  icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                }
+              ]}
+              align="left"
+            />
+            <h2 className="text-xl font-semibold tracking-tight">{folderName ?? "My Videos"}</h2>
+          </div>
           <SortButton
             direction={sortDirection}
             onToggle={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
@@ -201,6 +291,8 @@ export function PlayerClient({
                 initialTime={currentVideo ? getInitialTime(currentVideo.id) : undefined}
                 onTimeUpdate={handleTimeUpdate}
                 onEnded={goPrevious}
+                isWatched={currentVideo ? isWatched(currentVideo.id) : false}
+                onToggleWatched={handleToggleWatched}
               />
             </div>
           </div>
