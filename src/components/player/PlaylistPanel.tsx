@@ -10,6 +10,7 @@ type PlaylistVideo = {
   mimeType: string;
   sourceUrl: string;
   folderId: string;
+  modifiedTime: string | null;
 };
 
 type PlaylistPanelProps = {
@@ -63,7 +64,7 @@ export function PlaylistPanel({
 
         <div className="flex-1 overflow-y-auto px-4">
           <div className="flex flex-col gap-2">
-            {videos.map((video, index) => {
+            {videos.map((video) => {
               const active = video.id === currentVideoId;
               const watched = isWatched?.(video.id) ?? false;
 
@@ -78,18 +79,21 @@ export function PlaylistPanel({
                       : "bg-transparent hover:bg-zinc-800/80"
                   }`}
                 >
-                  <div className={`flex shrink-0 items-center justify-center tabular-nums text-xl font-bold tracking-tight transition-colors duration-300 ${
-                    active ? "text-blue-500" : "text-zinc-700 group-hover:text-zinc-500"
-                  }`}>
-                    {index + 1}
-                  </div>
-
-                  <div className="flex-1 min-w-0 pr-2">
+                  <div className="flex-1 min-w-0 pr-2 pl-2">
                     <span className={`block truncate font-semibold transition-colors duration-300 ${
                       active ? "text-blue-500" : "text-zinc-100 group-hover:text-white"
                     }`}>
                       {parseEpisodeName(video.name)}
                     </span>
+                    {video.modifiedTime && (
+                      <span className="mt-0.5 block truncate text-xs font-medium text-zinc-500 transition-colors duration-300 group-hover:text-zinc-400">
+                        {new Date(video.modifiedTime).toLocaleDateString(undefined, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex shrink-0 items-center justify-end gap-3 pl-2">
