@@ -114,7 +114,6 @@ export function PlayerClient({
 
       // 3. Revalidate
       await invalidateAfterProgressUpdate(folderId);
-      await mutateProgress();
 
       return res;
     })();
@@ -167,7 +166,6 @@ export function PlayerClient({
 
       // 3. Wait for all caches to revalidate to ensure UI is in sync with server
       await invalidateAfterProgressUpdate(folderId);
-      await mutateProgress();
 
       return res;
     })();

@@ -117,6 +117,7 @@ export function useWatchProgressBatch(folderVideoIds: (string | null)[]) {
 
   return useSWR<{ progress: Record<string, ProgressEntry> }>(key, {
     dedupingInterval: 30 * 1000,
+    keepPreviousData: true,
   });
 }
 
@@ -124,11 +125,12 @@ export function useWatchProgressBatch(folderVideoIds: (string | null)[]) {
 
 export async function invalidateAfterProgressUpdate(folderId?: string) {
   // Invalidate all progress-related caches
+  // IMPORTANT: Do not pass 'undefined' as data or it will clear the cache before revalidating
   const promises: Promise<unknown>[] = [
     globalMutate(
       (key: unknown) => typeof key === "string" && key.startsWith("/api/progress"),
       undefined,
-      { revalidate: true },
+      { revalidate: true, populateCache: false },
     ),
   ];
 
@@ -138,7 +140,7 @@ export async function invalidateAfterProgressUpdate(folderId?: string) {
       globalMutate(
         (key: unknown) => typeof key === "string" && key.startsWith("/api/folders/has-new"),
         undefined,
-        { revalidate: true },
+        { revalidate: true, populateCache: false },
       ),
     );
   }
