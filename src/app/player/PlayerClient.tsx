@@ -74,9 +74,13 @@ export function PlayerClient({
     videoMeta,
   );
 
-  async function handleToggleWatched(watched: boolean) {
-    if (!currentVideo || isMarkingVideo) return;
-    const folderVideoId = currentVideo.folderVideoId;
+  async function handleToggleWatched(videoId: string, watched: boolean) {
+    if (isMarkingVideo) return;
+    
+    const video = videos.find(v => v.id === videoId);
+    if (!video) return;
+
+    const folderVideoId = video.folderVideoId;
     if (!folderVideoId) {
       toast.error("Video not synced yet. Sync the folder first.");
       return;
@@ -319,6 +323,8 @@ export function PlayerClient({
               currentVideoId={currentVideoId}
               onSelect={handleSelect}
               isWatched={isWatched}
+              onToggleWatched={handleToggleWatched}
+              isMarkingVideo={isMarkingVideo}
               hasMore={hasMore}
               onLoadMore={loadMore}
               isLoadingMore={isLoadingMore}
@@ -334,7 +340,9 @@ export function PlayerClient({
                 onTimeUpdate={handleTimeUpdate}
                 onEnded={goPrevious}
                 isWatched={currentVideo ? isWatched(currentVideo.id) : false}
-                onToggleWatched={handleToggleWatched}
+                onToggleWatched={(watched) => {
+                  if (currentVideo) handleToggleWatched(currentVideo.id, watched);
+                }}
                 isMarkingVideo={isMarkingVideo}
               />
             </div>
