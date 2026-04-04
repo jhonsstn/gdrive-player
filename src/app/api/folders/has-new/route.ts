@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     folderIds.map(async (folderId) => {
       try {
         const latestTime = await getLatestVideoModifiedTime(accessToken, folderId);
-        if (!latestTime) return [folderId, { hasNew: false, hasNotSeen: false }] as const;
+        if (!latestTime) return [folderId, { hasNew: false, hasNotSeen: false, isEmpty: true }] as const;
 
         const row = lastSeenMap.get(folderId);
         const latestDate = new Date(latestTime);
@@ -45,19 +45,21 @@ export async function GET(request: Request) {
         const hasNew = !row ? true : latestDate > row.lastSeenDate;
         const hasNotSeen = !row?.watchedThrough ? true : latestDate > row.watchedThrough;
 
-        return [folderId, { hasNew, hasNotSeen }] as const;
+        return [folderId, { hasNew, hasNotSeen, isEmpty: false }] as const;
       } catch {
-        return [folderId, { hasNew: false, hasNotSeen: false }] as const;
+        return [folderId, { hasNew: false, hasNotSeen: false, isEmpty: false }] as const;
       }
     }),
   );
 
   const hasNew: Record<string, boolean> = {};
   const hasNotSeen: Record<string, boolean> = {};
-  for (const [folderId, { hasNew: n, hasNotSeen: s }] of results) {
+  const isEmpty: Record<string, boolean> = {};
+  for (const [folderId, { hasNew: n, hasNotSeen: s, isEmpty: e }] of results) {
     hasNew[folderId] = n;
     hasNotSeen[folderId] = s;
+    isEmpty[folderId] = e;
   }
 
-  return NextResponse.json({ hasNew, hasNotSeen });
+  return NextResponse.json({ hasNew, hasNotSeen, isEmpty });
 }

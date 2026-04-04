@@ -38,6 +38,15 @@ export function FolderSelectionClient({
     );
   }, [hasNewData]);
 
+  const emptyFolderIds = useMemo(() => {
+    if (!hasNewData?.isEmpty) return new Set<string>();
+    return new Set(
+      Object.entries(hasNewData.isEmpty)
+        .filter(([, v]) => v)
+        .map(([k]) => k),
+    );
+  }, [hasNewData]);
+
   const { data: cwData, isLoading: isContinueWatchingLoading } = useContinueWatching();
   const continueWatching = cwData?.items ?? [];
 
@@ -203,6 +212,9 @@ export function FolderSelectionClient({
                       </h3>
                       {notSeenFolderIds.has(folder.folderId) ? (
                         <Badge size="sm">Not seen</Badge>
+                      ) : null}
+                      {emptyFolderIds.has(folder.folderId) ? (
+                        <Badge size="sm" variant="zinc">Empty</Badge>
                       ) : null}
                     </div>
                   </div>
