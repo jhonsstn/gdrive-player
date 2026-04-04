@@ -39,6 +39,7 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
   const [migrateUrl, setMigrateUrl] = useState("");
   const [migrating, setMigrating] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [syncingAll, setSyncingAll] = useState(false);
 
   const hasFolders = useMemo(() => folders.length > 0, [folders.length]);
 
@@ -132,6 +133,28 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
     }
   }
 
+  async function handleSyncAll() {
+    setSyncingAll(true);
+    try {
+      const response = await fetch("/api/config/folders/sync-all", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+      });
+
+      if (!response.ok) {
+        toast.error(await readApiError(response));
+        return;
+      }
+
+      const parsed = (await response.json()) as { count: number };
+      toast.success(`Synced ${parsed.count} total video${parsed.count !== 1 ? "s" : ""} across all folders.`);
+    } catch {
+      toast.error("Failed to sync all folders.");
+    } finally {
+      setSyncingAll(false);
+    }
+  }
+
   async function handleDeleteFolder(id: string) {
     const response = await fetch("/api/config/folders", {
       method: "DELETE",
@@ -189,7 +212,7 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
         </div>
 
         {hasFolders && (
-          <div className="mb-4">
+          <div className="mb-4 flex items-center justify-between gap-4">
             <input
               type="search"
               value={search}
@@ -197,6 +220,14 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
               placeholder="Search folders…"
               className="w-full rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-50 placeholder:text-zinc-500 focus:outline-2 focus:outline-blue-500 sm:w-64"
             />
+            <Button
+              variant="secondary"
+              disabled={syncingAll}
+              onClick={handleSyncAll}
+              className="whitespace-nowrap"
+            >
+              {syncingAll ? "Syncing All…" : "Sync All"}
+            </Button>
           </div>
         )}
 
