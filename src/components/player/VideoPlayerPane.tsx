@@ -10,8 +10,6 @@ type VideoEntry = {
   id: string;
   name: string;
   mimeType: string;
-  folderId: string;
-  modifiedTime: string | null;
 };
 
 type VideoPlayerPaneProps = {
@@ -25,6 +23,7 @@ type VideoPlayerPaneProps = {
   onEnded?: () => void;
   isWatched?: boolean;
   onToggleWatched?: (watched: boolean) => void;
+  isMarkingVideo?: boolean;
 };
 
 type VjsPlayer = {
@@ -92,6 +91,7 @@ export function VideoPlayerPane({
   onEnded,
   isWatched,
   onToggleWatched,
+  isMarkingVideo,
 }: VideoPlayerPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<VjsPlayer | null>(null);
@@ -280,8 +280,8 @@ export function VideoPlayerPane({
               }
               items={[
                 {
-                  label: isWatched ? "Mark as unwatched" : "Mark as watched",
-                  onClick: () => onToggleWatched(!isWatched),
+                  label: isMarkingVideo ? "Saving…" : isWatched ? "Mark as unwatched" : "Mark as watched",
+                  onClick: () => { if (!isMarkingVideo) onToggleWatched(!isWatched); },
                   icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">{isWatched ? <><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></> : <polyline points="20 6 9 17 4 12"></polyline>}</svg>
                 }
               ]}

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   findMany: vi.fn(),
+  folderVideoFindMany: vi.fn(),
   listFolderVideos: vi.fn(),
   listFolderVideosPage: vi.fn(),
 }));
@@ -15,6 +16,9 @@ vi.mock("@/lib/db", () => ({
   db: {
     configuredFolder: {
       findMany: mocks.findMany,
+    },
+    folderVideo: {
+      findMany: mocks.folderVideoFindMany,
     },
   },
 }));
@@ -37,6 +41,7 @@ import { GET } from "@/app/api/videos/route";
 describe("/api/videos", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.folderVideoFindMany.mockResolvedValue([]);
   });
 
   it("returns 401 for unauthenticated users", async () => {

@@ -6,6 +6,7 @@ import { isAdminSession } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { getFolderName } from "@/lib/drive";
 import { parseDriveFolderId } from "@/lib/drive-url";
+import { syncFolderVideos } from "@/lib/sync";
 
 type FolderCreateBody = {
   sourceUrl?: string;
@@ -99,6 +100,13 @@ export async function POST(request: Request) {
       },
     });
 
+    // Sync videos in the background — non-fatal if it fails
+    if (session.accessToken) {
+      syncFolderVideos(session.accessToken, folderId).catch(() => {
+        // Ignore sync errors; admin can manually re-sync
+      });
+    }
+
     return NextResponse.json({ folder: created }, { status: 201 });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -175,15 +183,19 @@ export async function PATCH(request: Request) {
         where: { id: body.id },
         data: { folderId: newFolderId, sourceUrl: body.sourceUrl, name },
       }),
-      db.watchProgress.updateMany({
-        where: { folderId: oldFolderId },
-        data: { folderId: newFolderId },
-      }),
+      // FolderVideo rows for old folderId are deleted; WatchProgress cascades.
+      // New FolderVideo rows will be synced after migration.
+      db.folderVideo.deleteMany({ where: { folderId: oldFolderId } }),
       db.userFolderLastSeen.updateMany({
         where: { folderId: oldFolderId },
         data: { folderId: newFolderId },
       }),
     ]);
+
+    // Sync videos for the new folderId in the background
+    if (session.accessToken) {
+      syncFolderVideos(session.accessToken, newFolderId).catch(() => {});
+    }
 
     return NextResponse.json({ folder: updated });
   } catch (error) {
@@ -214,6 +226,13 @@ export async function DELETE(request: Request) {
   }
 
   try {
+    const folder = await db.configuredFolder.findUnique({ where: { id: body.id } });
+
+    if (folder) {
+      // Delete FolderVideo rows (WatchProgress cascades via FK)
+      await db.folderVideo.deleteMany({ where: { folderId: folder.folderId } });
+    }
+
     await db.configuredFolder.delete({
       where: { id: body.id },
     });

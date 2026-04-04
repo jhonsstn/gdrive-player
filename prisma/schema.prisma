@@ -15,18 +15,35 @@ model ConfiguredFolder {
   updatedAt DateTime @updatedAt
 }
 
-model WatchProgress {
-  id          String   @id @default(cuid())
-  userEmail   String
-  videoId     String
-  currentTime Float    @default(0)
-  duration    Float    @default(0)
-  watched     Boolean  @default(false)
-  folderId    String?
-  videoName   String?
-  updatedAt   DateTime @updatedAt
+model FolderVideo {
+  id           String    @id @default(cuid())
+  folderId     String
+  driveFileId  String
+  name         String
+  mimeType     String
+  size         String?
+  modifiedTime DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  @@unique([userEmail, videoId])
+  watchProgress WatchProgress[]
+
+  @@unique([folderId, driveFileId])
+  @@index([folderId])
+}
+
+model WatchProgress {
+  id            String      @id @default(cuid())
+  userEmail     String
+  folderVideoId String
+  currentTime   Float       @default(0)
+  duration      Float       @default(0)
+  watched       Boolean     @default(false)
+  updatedAt     DateTime    @updatedAt
+
+  folderVideo   FolderVideo @relation(fields: [folderVideoId], references: [id], onDelete: Cascade)
+
+  @@unique([userEmail, folderVideoId])
 }
 
 model UserFolderLastSeen {

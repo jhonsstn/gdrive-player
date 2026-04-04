@@ -35,9 +35,9 @@ describe("/api/progress/continue-watching", () => {
     mocks.auth.mockResolvedValue({ user: { email: "u@t.com" } });
     const now = new Date("2024-06-01T00:00:00Z");
     mocks.findMany.mockResolvedValue([
-      { videoId: "v1", videoName: "Episode 1", folderId: "f1", currentTime: 120, duration: 600, updatedAt: now },
-      { videoId: "v2", videoName: "Episode 2", folderId: "f1", currentTime: 60, duration: 600, updatedAt: now },
-      { videoId: "v3", videoName: "Movie", folderId: "f2", currentTime: 300, duration: 7200, updatedAt: now },
+      { folderVideo: { driveFileId: "v1", name: "Episode 1", folderId: "f1" }, currentTime: 120, duration: 600, updatedAt: now },
+      { folderVideo: { driveFileId: "v2", name: "Episode 2", folderId: "f1" }, currentTime: 60, duration: 600, updatedAt: now },
+      { folderVideo: { driveFileId: "v3", name: "Movie", folderId: "f2" }, currentTime: 300, duration: 7200, updatedAt: now },
     ]);
 
     const response = await GET();
@@ -64,8 +64,8 @@ describe("/api/progress/continue-watching", () => {
   it("skips rows with null folderId", async () => {
     mocks.auth.mockResolvedValue({ user: { email: "u@t.com" } });
     mocks.findMany.mockResolvedValue([
-      { videoId: "v1", videoName: "Orphan", folderId: null, currentTime: 50, duration: 600, updatedAt: new Date() },
-      { videoId: "v2", videoName: "Valid", folderId: "f1", currentTime: 50, duration: 600, updatedAt: new Date() },
+      { folderVideo: null, currentTime: 50, duration: 600, updatedAt: new Date() },
+      { folderVideo: { driveFileId: "v2", name: "Valid", folderId: "f1" }, currentTime: 50, duration: 600, updatedAt: new Date() },
     ]);
 
     const response = await GET();

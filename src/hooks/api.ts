@@ -9,7 +9,7 @@ type Folder = {
 
 type ContinueWatchingItem = {
   videoId: string;
-  videoName: string | null;
+  videoName: string;
   folderId: string;
   currentTime: number;
   duration: number;
@@ -23,6 +23,7 @@ type PlayerVideo = {
   sourceUrl: string;
   folderId: string;
   modifiedTime: string | null;
+  folderVideoId: string | null;
 };
 
 type ProgressEntry = {
@@ -108,9 +109,10 @@ export function useVideos(folderId: string, sort: SortDirection) {
 
 // ── Watch Progress (batch) ──
 
-export function useWatchProgressBatch(videoIds: string[]) {
-  const key = videoIds.length > 0
-    ? `/api/progress?videoIds=${videoIds.join(",")}`
+export function useWatchProgressBatch(folderVideoIds: (string | null)[]) {
+  const validIds = folderVideoIds.filter((id): id is string => id !== null);
+  const key = validIds.length > 0
+    ? `/api/progress?folderVideoIds=${validIds.join(",")}`
     : null;
 
   return useSWR<{ progress: Record<string, ProgressEntry> }>(key, {
@@ -120,11 +122,26 @@ export function useWatchProgressBatch(videoIds: string[]) {
 
 // ── Cache Invalidation ──
 
-export function invalidateAfterProgressUpdate() {
-  void globalMutate(
-    (key: unknown) =>
-      typeof key === "string" && key.startsWith("/api/progress/continue-watching"),
-    undefined,
-    { revalidate: true },
-  );
+export async function invalidateAfterProgressUpdate(folderId?: string) {
+  // Invalidate all progress-related caches
+  const promises: Promise<unknown>[] = [
+    globalMutate(
+      (key: unknown) => typeof key === "string" && key.startsWith("/api/progress"),
+      undefined,
+      { revalidate: true },
+    ),
+  ];
+
+  if (folderId) {
+    // Revalidate folder badges
+    promises.push(
+      globalMutate(
+        (key: unknown) => typeof key === "string" && key.startsWith("/api/folders/has-new"),
+        undefined,
+        { revalidate: true },
+      ),
+    );
+  }
+
+  await Promise.all(promises);
 }

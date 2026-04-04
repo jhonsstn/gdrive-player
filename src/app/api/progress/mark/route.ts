@@ -10,66 +10,49 @@ export async function PUT(request: Request) {
   }
 
   const body = await request.json();
-  const { videoId, watched, folderId, videoName, videoModifiedTime } = body as {
-    videoId?: string;
+  const { folderVideoId, watched } = body as {
+    folderVideoId?: string;
     watched?: boolean;
-    folderId?: string;
-    videoName?: string;
-    videoModifiedTime?: string;
   };
 
-  if (!videoId || typeof watched !== "boolean") {
+  if (!folderVideoId || typeof watched !== "boolean") {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
   const userEmail = session.user.email;
-  
+
   const existing = await db.watchProgress.findUnique({
-    where: {
-      userEmail_videoId: { userEmail, videoId },
-    },
+    where: { userEmail_folderVideoId: { userEmail, folderVideoId } },
   });
 
   const duration = existing?.duration || 1;
   const currentTime = watched ? duration : 0;
 
   await db.watchProgress.upsert({
-    where: {
-      userEmail_videoId: { userEmail, videoId },
-    },
-    create: {
-      userEmail,
-      videoId,
-      currentTime,
-      duration,
-      watched,
-      folderId: folderId ?? null,
-      videoName: videoName ?? null,
-    },
-    update: {
-      currentTime,
-      watched,
-      ...(folderId ? { folderId } : {}),
-      ...(videoName ? { videoName } : {}),
-    },
+    where: { userEmail_folderVideoId: { userEmail, folderVideoId } },
+    create: { userEmail, folderVideoId, currentTime, duration, watched },
+    update: { currentTime, watched },
   });
 
-  if (watched && folderId && videoModifiedTime) {
-    const newWatchedDate = new Date(videoModifiedTime);
-    if (!isNaN(newWatchedDate.getTime())) {
+  if (watched) {
+    const fv = await db.folderVideo.findUnique({
+      where: { id: folderVideoId },
+      select: { folderId: true, modifiedTime: true },
+    });
+    if (fv?.folderId && fv.modifiedTime) {
       const existingLastSeen = await db.userFolderLastSeen.findUnique({
-        where: { userEmail_folderId: { userEmail, folderId } },
+        where: { userEmail_folderId: { userEmail, folderId: fv.folderId } },
       });
-      if (!existingLastSeen?.watchedThrough || newWatchedDate > existingLastSeen.watchedThrough) {
+      if (!existingLastSeen?.watchedThrough || fv.modifiedTime > existingLastSeen.watchedThrough) {
         await db.userFolderLastSeen.upsert({
-          where: { userEmail_folderId: { userEmail, folderId } },
+          where: { userEmail_folderId: { userEmail, folderId: fv.folderId } },
           create: {
             userEmail,
-            folderId,
-            lastSeenDate: newWatchedDate,
-            watchedThrough: newWatchedDate,
+            folderId: fv.folderId,
+            lastSeenDate: fv.modifiedTime,
+            watchedThrough: fv.modifiedTime,
           },
-          update: { watchedThrough: newWatchedDate },
+          update: { lastSeenDate: fv.modifiedTime, watchedThrough: fv.modifiedTime },
         });
       }
     }

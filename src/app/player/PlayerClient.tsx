@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { mutate as globalMutate } from "swr";
+import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
 import { PlaylistPanel } from "@/components/player/PlaylistPanel";
@@ -9,7 +10,7 @@ import { VideoPlayerPane } from "@/components/player/VideoPlayerPane";
 import { DropdownMenu } from "@/components/ui/DropdownMenu";
 import { useWatchProgress, type VideoMeta } from "@/hooks/useWatchProgress";
 import { SortButton } from "@/components/ui/SortButton";
-import { useVideos } from "@/hooks/api";
+import { useVideos, invalidateAfterProgressUpdate } from "@/hooks/api";
 
 type SortDirection = "asc" | "desc";
 
@@ -32,6 +33,8 @@ export function PlayerClient({
 }: PlayerClientProps) {
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [isMarkingAll, setIsMarkingAll] = useState(false);
+  const [isMarkingVideo, setIsMarkingVideo] = useState(false);
 
   const {
     videos,
@@ -61,7 +64,7 @@ export function PlayerClient({
   const videoMeta: VideoMeta = useMemo(() => {
     const meta: VideoMeta = {};
     for (const v of videos) {
-      meta[v.id] = { folderId: v.folderId, modifiedTime: v.modifiedTime, name: v.name };
+      meta[v.id] = { folderVideoId: v.folderVideoId };
     }
     return meta;
   }, [videos]);
@@ -72,66 +75,105 @@ export function PlayerClient({
   );
 
   async function handleToggleWatched(watched: boolean) {
-    if (!currentVideo) return;
-    
-    void mutateProgress(
-      (prev) => {
-        if (!prev) return prev;
-        return {
+    if (!currentVideo || isMarkingVideo) return;
+    const folderVideoId = currentVideo.folderVideoId;
+    if (!folderVideoId) {
+      toast.error("Video not synced yet. Sync the folder first.");
+      return;
+    }
+
+    setIsMarkingVideo(true);
+
+    const promise = (async () => {
+      // 1. Optimistic update
+      void mutateProgress(
+        (prev: { progress: Record<string, { currentTime: number; duration: number; watched: boolean }> } | undefined) => ({
           progress: {
-            ...prev.progress,
-            [currentVideo.id]: { currentTime: watched ? 1 : 0, duration: 1, watched },
+            ...(prev?.progress ?? {}),
+            [folderVideoId]: { currentTime: watched ? 1 : 0, duration: 1, watched },
           },
-        };
-      },
-      { revalidate: false },
-    );
-    
-    await fetch("/api/progress/mark", {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        videoId: currentVideo.id,
-        watched,
-        folderId: currentVideo.folderId,
-        videoName: currentVideo.name,
-        videoModifiedTime: currentVideo.modifiedTime,
-      }),
+        }),
+        { revalidate: false },
+      );
+
+      // 2. Server update
+      const res = await fetch("/api/progress/mark", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ folderVideoId, watched }),
+      });
+
+      if (!res.ok) {
+        await mutateProgress();
+        throw new Error("Failed to update");
+      }
+
+      // 3. Revalidate
+      await invalidateAfterProgressUpdate(folderId);
+      await mutateProgress();
+
+      return res;
+    })();
+
+    toast.promise(promise, {
+      loading: watched ? "Marking as watched..." : "Marking as unwatched...",
+      success: watched ? "Marked as watched" : "Marked as unwatched",
+      error: "Failed to update video",
+      finally: () => setIsMarkingVideo(false),
     });
-    
-    void globalMutate(
-      (key: unknown) =>
-        typeof key === "string" && key.startsWith("/api/progress"),
-    );
   }
 
   async function handleMarkAll(watched: boolean) {
-    void mutateProgress(
-      (prev) => {
-        if (!prev) return prev;
-        const newProgress = { ...prev.progress };
-        for (const video of videos) {
-          newProgress[video.id] = { currentTime: watched ? 1 : 0, duration: 1, watched };
+    if (isMarkingAll) return;
+
+    setIsMarkingAll(true);
+
+    const promise = (async () => {
+      // 1. Optimistic update of local SWR cache for immediate UI feedback
+      const optimisticProgress: Record<string, { currentTime: number; duration: number; watched: boolean }> = {};
+      for (const video of videos) {
+        if (video.folderVideoId) {
+          optimisticProgress[video.folderVideoId] = {
+            currentTime: watched ? 1 : 0,
+            duration: 1,
+            watched,
+          };
         }
-        return { progress: newProgress };
-      },
-      { revalidate: false },
-    );
-    
-    await fetch("/api/progress/mark-all", {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ folderId, watched }),
+      }
+
+      void mutateProgress(
+        (prev: { progress: Record<string, { currentTime: number; duration: number; watched: boolean }> } | undefined) => ({
+          progress: { ...(prev?.progress ?? {}), ...optimisticProgress },
+        }),
+        { revalidate: false },
+      );
+
+      // 2. Perform the server update
+      const res = await fetch("/api/progress/mark-all", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ folderId, watched }),
+      });
+
+      if (!res.ok) {
+        // Revalidate to restore correct state on error
+        await mutateProgress();
+        throw new Error("Failed to update");
+      }
+
+      // 3. Wait for all caches to revalidate to ensure UI is in sync with server
+      await invalidateAfterProgressUpdate(folderId);
+      await mutateProgress();
+
+      return res;
+    })();
+
+    toast.promise(promise, {
+      loading: watched ? "Marking all as watched..." : "Marking all as unwatched...",
+      success: watched ? "All videos marked as watched" : "All videos marked as unwatched",
+      error: "Failed to update videos",
+      finally: () => setIsMarkingAll(false),
     });
-    
-    void globalMutate(
-      (key: unknown) =>
-        typeof key === "string" && key.startsWith("/api/progress"),
-    );
-    void globalMutate(
-      (key: unknown) =>
-        typeof key === "string" && key.startsWith("/api/folders/has-new"),
-    );
   }
 
   // On folder entry: set lastSeenDate to latest video modifiedTime.
@@ -218,13 +260,13 @@ export function PlayerClient({
               }
               items={[
                 {
-                  label: "Mark all as watched",
-                  onClick: () => handleMarkAll(true),
+                  label: isMarkingAll ? "Marking…" : "Mark all as watched",
+                  onClick: () => { if (!isMarkingAll) void handleMarkAll(true); },
                   icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 },
                 {
-                  label: "Mark all as unwatched",
-                  onClick: () => handleMarkAll(false),
+                  label: isMarkingAll ? "Marking…" : "Mark all as unwatched",
+                  onClick: () => { if (!isMarkingAll) void handleMarkAll(false); },
                   icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 }
               ]}
@@ -293,6 +335,7 @@ export function PlayerClient({
                 onEnded={goPrevious}
                 isWatched={currentVideo ? isWatched(currentVideo.id) : false}
                 onToggleWatched={handleToggleWatched}
+                isMarkingVideo={isMarkingVideo}
               />
             </div>
           </div>

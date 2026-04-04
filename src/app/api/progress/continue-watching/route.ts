@@ -13,7 +13,9 @@ export async function GET() {
       userEmail: session.user.email,
       watched: false,
       currentTime: { gt: 0 },
-      folderId: { not: null },
+    },
+    include: {
+      folderVideo: { select: { folderId: true, driveFileId: true, name: true } },
     },
     orderBy: { updatedAt: "desc" },
   });
@@ -22,7 +24,7 @@ export async function GET() {
   const seenFolders = new Set<string>();
   const items: {
     videoId: string;
-    videoName: string | null;
+    videoName: string;
     folderId: string;
     currentTime: number;
     duration: number;
@@ -30,19 +32,18 @@ export async function GET() {
   }[] = [];
 
   for (const row of rows) {
-    if (!row.folderId || seenFolders.has(row.folderId)) continue;
-    seenFolders.add(row.folderId);
+    const fv = row.folderVideo;
+    if (!fv?.folderId || seenFolders.has(fv.folderId)) continue;
+    seenFolders.add(fv.folderId);
     items.push({
-      videoId: row.videoId,
-      videoName: row.videoName,
-      folderId: row.folderId,
+      videoId: fv.driveFileId,
+      videoName: fv.name,
+      folderId: fv.folderId,
       currentTime: row.currentTime,
       duration: row.duration,
       updatedAt: row.updatedAt.toISOString(),
     });
   }
 
-  return NextResponse.json({ items }, {
-    headers: { "Cache-Control": "private, max-age=10, stale-while-revalidate=30" },
-  });
+  return NextResponse.json({ items });
 }

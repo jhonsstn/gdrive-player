@@ -9,28 +9,26 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const videoIds = searchParams.get("videoIds");
-  if (!videoIds) {
-    return NextResponse.json({ error: "Missing videoIds" }, { status: 400 });
+  const folderVideoIds = searchParams.get("folderVideoIds");
+  if (!folderVideoIds) {
+    return NextResponse.json({ error: "Missing folderVideoIds" }, { status: 400 });
   }
 
-  const ids = videoIds.split(",").filter(Boolean);
+  const ids = folderVideoIds.split(",").filter(Boolean);
   const rows = await db.watchProgress.findMany({
-    where: { userEmail: session.user.email, videoId: { in: ids } },
+    where: { userEmail: session.user.email, folderVideoId: { in: ids } },
   });
 
   const progress: Record<string, { currentTime: number; duration: number; watched: boolean }> = {};
   for (const row of rows) {
-    progress[row.videoId] = {
+    progress[row.folderVideoId] = {
       currentTime: row.currentTime,
       duration: row.duration,
       watched: row.watched,
     };
   }
 
-  return NextResponse.json({ progress }, {
-    headers: { "Cache-Control": "private, max-age=10, stale-while-revalidate=30" },
-  });
+  return NextResponse.json({ progress });
 }
 
 export async function PUT(request: Request) {
@@ -40,63 +38,45 @@ export async function PUT(request: Request) {
   }
 
   const body = await request.json();
-  const { videoId, currentTime, duration, folderId, videoName, videoModifiedTime } = body as {
-    videoId?: string;
+  const { folderVideoId, currentTime, duration } = body as {
+    folderVideoId?: string;
     currentTime?: number;
     duration?: number;
-    folderId?: string;
-    videoName?: string;
-    videoModifiedTime?: string;
   };
 
-  if (!videoId || currentTime == null || !duration || duration <= 0) {
+  if (!folderVideoId || currentTime == null || !duration || duration <= 0) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
+  const userEmail = session.user.email;
   const watched = currentTime / duration >= 0.9;
 
   await db.watchProgress.upsert({
-    where: {
-      userEmail_videoId: {
-        userEmail: session.user.email,
-        videoId,
-      },
-    },
-    create: {
-      userEmail: session.user.email,
-      videoId,
-      currentTime,
-      duration,
-      watched,
-      folderId: folderId ?? null,
-      videoName: videoName ?? null,
-    },
-    update: {
-      currentTime,
-      duration,
-      watched,
-      ...(folderId ? { folderId } : {}),
-      ...(videoName ? { videoName } : {}),
-    },
+    where: { userEmail_folderVideoId: { userEmail, folderVideoId } },
+    create: { userEmail, folderVideoId, currentTime, duration, watched },
+    update: { currentTime, duration, watched },
   });
 
-  // When a video is fully watched, advance watchedThrough so "Not seen" clears
-  if (watched && folderId && videoModifiedTime) {
-    const newWatchedDate = new Date(videoModifiedTime);
-    if (!isNaN(newWatchedDate.getTime())) {
+  // When watched, advance watchedThrough for the folder
+  if (watched) {
+    const fv = await db.folderVideo.findUnique({
+      where: { id: folderVideoId },
+      select: { folderId: true, modifiedTime: true },
+    });
+    if (fv?.folderId && fv.modifiedTime) {
       const existing = await db.userFolderLastSeen.findUnique({
-        where: { userEmail_folderId: { userEmail: session.user.email, folderId } },
+        where: { userEmail_folderId: { userEmail, folderId: fv.folderId } },
       });
-      if (!existing?.watchedThrough || newWatchedDate > existing.watchedThrough) {
+      if (!existing?.watchedThrough || fv.modifiedTime > existing.watchedThrough) {
         await db.userFolderLastSeen.upsert({
-          where: { userEmail_folderId: { userEmail: session.user.email, folderId } },
+          where: { userEmail_folderId: { userEmail, folderId: fv.folderId } },
           create: {
-            userEmail: session.user.email,
-            folderId,
-            lastSeenDate: newWatchedDate,
-            watchedThrough: newWatchedDate,
+            userEmail,
+            folderId: fv.folderId,
+            lastSeenDate: fv.modifiedTime,
+            watchedThrough: fv.modifiedTime,
           },
-          update: { watchedThrough: newWatchedDate },
+          update: { lastSeenDate: fv.modifiedTime, watchedThrough: fv.modifiedTime },
         });
       }
     }

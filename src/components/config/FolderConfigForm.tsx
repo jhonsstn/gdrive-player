@@ -38,6 +38,7 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
   const [migratingId, setMigratingId] = useState<string | null>(null);
   const [migrateUrl, setMigrateUrl] = useState("");
   const [migrating, setMigrating] = useState(false);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
 
   const hasFolders = useMemo(() => folders.length > 0, [folders.length]);
 
@@ -105,6 +106,29 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
       toast.error("Failed to migrate folder.");
     } finally {
       setMigrating(false);
+    }
+  }
+
+  async function handleSyncFolder(folderId: string, folderDbId: string) {
+    setSyncingId(folderDbId);
+    try {
+      const response = await fetch("/api/config/folders/sync", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ folderId }),
+      });
+
+      if (!response.ok) {
+        toast.error(await readApiError(response));
+        return;
+      }
+
+      const parsed = (await response.json()) as { count: number };
+      toast.success(`Synced ${parsed.count} video${parsed.count !== 1 ? "s" : ""}.`);
+    } catch {
+      toast.error("Failed to sync folder.");
+    } finally {
+      setSyncingId(null);
     }
   }
 
@@ -218,6 +242,13 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
                     </div>
                   </div>
                   <div className="flex shrink-0 gap-2">
+                    <Button
+                      variant="secondary"
+                      disabled={syncingId === folder.id}
+                      onClick={() => handleSyncFolder(folder.folderId, folder.id)}
+                    >
+                      {syncingId === folder.id ? "Syncing…" : "Sync"}
+                    </Button>
                     <Button
                       variant="secondary"
                       onClick={() => {

@@ -29,7 +29,7 @@ vi.mock("@/lib/db", () => ({
       update: mocks.update,
       delete: mocks.delete,
     },
-    watchProgress: { updateMany: vi.fn() },
+    folderVideo: { deleteMany: vi.fn() },
     userFolderLastSeen: { updateMany: vi.fn() },
     $transaction: mocks.transaction,
   },

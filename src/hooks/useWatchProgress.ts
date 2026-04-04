@@ -4,23 +4,26 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useWatchProgressBatch, invalidateAfterProgressUpdate } from "@/hooks/api";
 
-export type VideoMeta = Record<string, { folderId: string; modifiedTime: string | null; name: string }>;
+// Keyed by Drive video ID, maps to folderVideoId
+export type VideoMeta = Record<string, { folderVideoId: string | null }>;
 
 const FLUSH_INTERVAL_MS = 5_000;
 const WATCHED_THRESHOLD = 0.9;
 const EMPTY_PROGRESS: Record<string, { currentTime: number; duration: number; watched: boolean }> = {};
 
 export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
-  const { data: progressData, mutate: mutateProgress } = useWatchProgressBatch(videoIds);
+  const folderVideoIds = useMemo(
+    () => videoIds.map((id) => videoMeta[id]?.folderVideoId ?? null),
+    [videoIds, videoMeta],
+  );
+
+  const { data: progressData, mutate: mutateProgress } = useWatchProgressBatch(folderVideoIds);
   const progressMap = useMemo(() => progressData?.progress ?? EMPTY_PROGRESS, [progressData]);
 
   const bufferRef = useRef<{
-    videoId: string;
+    folderVideoId: string;
     currentTime: number;
     duration: number;
-    folderId?: string;
-    videoName?: string;
-    videoModifiedTime?: string;
   } | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -28,7 +31,7 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
     const buf = bufferRef.current;
     if (!buf) return;
 
-    const { videoId, currentTime, duration, folderId, videoName, videoModifiedTime } = buf;
+    const { folderVideoId, currentTime, duration } = buf;
     bufferRef.current = null;
 
     const watched = duration > 0 && currentTime / duration >= WATCHED_THRESHOLD;
@@ -40,7 +43,7 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
         return {
           progress: {
             ...prev.progress,
-            [videoId]: { currentTime, duration, watched },
+            [folderVideoId]: { currentTime, duration, watched },
           },
         };
       },
@@ -51,7 +54,7 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
       await fetch("/api/progress", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ videoId, currentTime, duration, folderId, videoName, videoModifiedTime }),
+        body: JSON.stringify({ folderVideoId, currentTime, duration }),
       });
 
       invalidateAfterProgressUpdate();
@@ -89,15 +92,9 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
 
   const recordTime = useCallback(
     (videoId: string, currentTime: number, duration: number) => {
-      const meta = videoMeta[videoId];
-      bufferRef.current = {
-        videoId,
-        currentTime,
-        duration,
-        folderId: meta?.folderId,
-        videoName: meta?.name,
-        videoModifiedTime: meta?.modifiedTime ?? undefined,
-      };
+      const folderVideoId = videoMeta[videoId]?.folderVideoId;
+      if (!folderVideoId) return; // Can't track without folderVideoId
+      bufferRef.current = { folderVideoId, currentTime, duration };
     },
     [videoMeta],
   );
@@ -108,19 +105,23 @@ export function useWatchProgress(videoIds: string[], videoMeta: VideoMeta) {
 
   const getInitialTime = useCallback(
     (videoId: string): number => {
-      const entry = progressMap[videoId];
+      const folderVideoId = videoMeta[videoId]?.folderVideoId;
+      if (!folderVideoId) return 0;
+      const entry = progressMap[folderVideoId];
       if (!entry) return 0;
       if (entry.watched) return 0;
       return entry.currentTime;
     },
-    [progressMap],
+    [videoMeta, progressMap],
   );
 
   const isWatched = useCallback(
     (videoId: string): boolean => {
-      return progressMap[videoId]?.watched ?? false;
+      const folderVideoId = videoMeta[videoId]?.folderVideoId;
+      if (!folderVideoId) return false;
+      return progressMap[folderVideoId]?.watched ?? false;
     },
-    [progressMap],
+    [videoMeta, progressMap],
   );
 
   return { recordTime, flush, getInitialTime, isWatched, mutateProgress };

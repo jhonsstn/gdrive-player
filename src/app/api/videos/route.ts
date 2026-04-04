@@ -41,7 +41,20 @@ export async function GET(request: Request) {
         folder.folderId,
         { pageToken, pageSize, sortDirection },
       );
-      const videos = pageVideos.map((video) => ({ ...video, sourceUrl: folder.sourceUrl }));
+
+      const driveFileIds = pageVideos.map((v) => v.id);
+      const folderVideoRows = await db.folderVideo.findMany({
+        where: { folderId: folder.folderId, driveFileId: { in: driveFileIds } },
+        select: { id: true, driveFileId: true },
+      });
+      const folderVideoMap = new Map(folderVideoRows.map((fv) => [fv.driveFileId, fv.id]));
+
+      const videos = pageVideos.map((video) => ({
+        ...video,
+        folderId: folder.folderId,
+        sourceUrl: folder.sourceUrl,
+        folderVideoId: folderVideoMap.get(video.id) ?? null,
+      }));
       return NextResponse.json({ videos, sort: sortDirection, nextPageToken });
     }
 
@@ -52,15 +65,28 @@ export async function GET(request: Request) {
       })),
     );
 
+    const allDriveVideos = groupedVideos.flatMap(({ folder, videos }) =>
+      videos
+        .filter((video) => isAllowedVideoMimeType(video.mimeType))
+        .map((video) => ({ ...video, folderId: folder.folderId, sourceUrl: folder.sourceUrl })),
+    );
+
+    // Batch lookup folderVideoId for all videos
+    const lookups = await Promise.all(
+      folders.map((folder) =>
+        db.folderVideo.findMany({
+          where: { folderId: folder.folderId },
+          select: { id: true, driveFileId: true },
+        }),
+      ),
+    );
+    const folderVideoMap = new Map(lookups.flat().map((fv) => [fv.driveFileId, fv.id]));
+
     const videos = sortByNaturalName(
-      groupedVideos
-        .flatMap(({ folder, videos }) =>
-          videos.map((video) => ({
-            ...video,
-            sourceUrl: folder.sourceUrl,
-          })),
-        )
-        .filter((video) => isAllowedVideoMimeType(video.mimeType)),
+      allDriveVideos.map((video) => ({
+        ...video,
+        folderVideoId: folderVideoMap.get(video.id) ?? null,
+      })),
       sortDirection,
     );
 

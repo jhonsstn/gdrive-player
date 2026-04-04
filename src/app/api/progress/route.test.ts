@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   findMany: vi.fn(),
   upsert: vi.fn(),
+  folderVideoFindUnique: vi.fn(),
   lastSeenFindUnique: vi.fn(),
   lastSeenUpsert: vi.fn(),
 }));
@@ -18,6 +19,9 @@ vi.mock("@/lib/db", () => ({
       findMany: mocks.findMany,
       upsert: mocks.upsert,
     },
+    folderVideo: {
+      findUnique: mocks.folderVideoFindUnique,
+    },
     userFolderLastSeen: {
       findUnique: mocks.lastSeenFindUnique,
       upsert: mocks.lastSeenUpsert,
@@ -30,6 +34,7 @@ import { GET, PUT } from "@/app/api/progress/route";
 describe("/api/progress", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.folderVideoFindUnique.mockResolvedValue(null);
     mocks.lastSeenFindUnique.mockResolvedValue(null);
     mocks.lastSeenUpsert.mockResolvedValue({});
   });
@@ -38,7 +43,7 @@ describe("/api/progress", () => {
     it("returns 401 for unauthenticated users", async () => {
       mocks.auth.mockResolvedValue(null);
 
-      const request = new Request("http://localhost/api/progress?videoIds=a,b");
+      const request = new Request("http://localhost/api/progress?folderVideoIds=a,b");
       const response = await GET(request as never);
 
       expect(response.status).toBe(401);
@@ -53,31 +58,31 @@ describe("/api/progress", () => {
       expect(response.status).toBe(400);
     });
 
-    it("returns progress map keyed by videoId", async () => {
+    it("returns progress map keyed by folderVideoId", async () => {
       mocks.auth.mockResolvedValue({ user: { email: "user@test.com" } });
       mocks.findMany.mockResolvedValue([
         {
-          videoId: "vid1",
+          folderVideoId: "fvid1",
           currentTime: 120,
           duration: 600,
           watched: false,
         },
         {
-          videoId: "vid2",
+          folderVideoId: "fvid2",
           currentTime: 570,
           duration: 600,
           watched: true,
         },
       ]);
 
-      const request = new Request("http://localhost/api/progress?videoIds=vid1,vid2");
+      const request = new Request("http://localhost/api/progress?folderVideoIds=fvid1,fvid2");
       const response = await GET(request as never);
 
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.progress).toEqual({
-        vid1: { currentTime: 120, duration: 600, watched: false },
-        vid2: { currentTime: 570, duration: 600, watched: true },
+        fvid1: { currentTime: 120, duration: 600, watched: false },
+        fvid2: { currentTime: 570, duration: 600, watched: true },
       });
     });
   });
@@ -90,7 +95,7 @@ describe("/api/progress", () => {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          videoId: "vid1",
+          folderVideoId: "fvid1",
           currentTime: 10,
           duration: 100,
         }),
@@ -106,7 +111,7 @@ describe("/api/progress", () => {
       const request = new Request("http://localhost/api/progress", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ videoId: "vid1" }),
+        body: JSON.stringify({ folderVideoId: "fvid1" }),
       });
       const response = await PUT(request as never);
 
@@ -121,7 +126,7 @@ describe("/api/progress", () => {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          videoId: "vid1",
+          folderVideoId: "fvid1",
           currentTime: 90,
           duration: 100,
         }),
@@ -133,16 +138,14 @@ describe("/api/progress", () => {
       expect(data.watched).toBe(true);
       expect(mocks.upsert).toHaveBeenCalledWith({
         where: {
-          userEmail_videoId: { userEmail: "user@test.com", videoId: "vid1" },
+          userEmail_folderVideoId: { userEmail: "user@test.com", folderVideoId: "fvid1" },
         },
         create: {
           userEmail: "user@test.com",
-          videoId: "vid1",
+          folderVideoId: "fvid1",
           currentTime: 90,
           duration: 100,
           watched: true,
-          folderId: null,
-          videoName: null,
         },
         update: { currentTime: 90, duration: 100, watched: true },
       });
@@ -156,7 +159,7 @@ describe("/api/progress", () => {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          videoId: "vid1",
+          folderVideoId: "fvid1",
           currentTime: 50,
           duration: 100,
         }),
@@ -168,20 +171,22 @@ describe("/api/progress", () => {
       expect(data.watched).toBe(false);
     });
 
-    it("advances watchedThrough when video is watched and videoModifiedTime is provided", async () => {
+    it("advances watchedThrough when video is watched and FolderVideo has modifiedTime", async () => {
       mocks.auth.mockResolvedValue({ user: { email: "user@test.com" } });
       mocks.upsert.mockResolvedValue({});
+      mocks.folderVideoFindUnique.mockResolvedValue({
+        folderId: "folder1",
+        modifiedTime: new Date("2024-06-01T00:00:00Z"),
+      });
       mocks.lastSeenFindUnique.mockResolvedValue(null);
 
       const request = new Request("http://localhost/api/progress", {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          videoId: "vid1",
+          folderVideoId: "fvid1",
           currentTime: 90,
           duration: 100,
-          folderId: "folder1",
-          videoModifiedTime: "2024-06-01T00:00:00Z",
         }),
       });
       const response = await PUT(request as never);
@@ -189,7 +194,9 @@ describe("/api/progress", () => {
       expect(response.status).toBe(200);
       expect(mocks.lastSeenUpsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          update: { watchedThrough: new Date("2024-06-01T00:00:00Z") },
+          update: expect.objectContaining({
+            watchedThrough: new Date("2024-06-01T00:00:00Z"),
+          }),
         }),
       );
     });
@@ -197,6 +204,10 @@ describe("/api/progress", () => {
     it("does not advance watchedThrough if existing watchedThrough is newer", async () => {
       mocks.auth.mockResolvedValue({ user: { email: "user@test.com" } });
       mocks.upsert.mockResolvedValue({});
+      mocks.folderVideoFindUnique.mockResolvedValue({
+        folderId: "folder1",
+        modifiedTime: new Date("2024-06-01T00:00:00Z"),
+      });
       mocks.lastSeenFindUnique.mockResolvedValue({
         watchedThrough: new Date("2024-12-01T00:00:00Z"),
       });
@@ -205,11 +216,9 @@ describe("/api/progress", () => {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          videoId: "vid1",
+          folderVideoId: "fvid1",
           currentTime: 90,
           duration: 100,
-          folderId: "folder1",
-          videoModifiedTime: "2024-06-01T00:00:00Z",
         }),
       });
       await PUT(request as never);
