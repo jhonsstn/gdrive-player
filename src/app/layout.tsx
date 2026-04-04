@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 
 import { SWRProvider } from "@/components/SWRProvider";
+import { Toaster } from "sonner";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -24,6 +25,7 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body className="bg-zinc-950 font-sans text-zinc-50 antialiased">
         <SWRProvider>{children}</SWRProvider>
+        <Toaster theme="dark" position="bottom-right" />
       </body>
     </html>
   );

@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { sortByNaturalName, type SortDirection } from "@/lib/sort";
 import { Button } from "@/components/ui/Button";
 import { SortButton } from "@/components/ui/SortButton";
-import { StatusMessage } from "@/components/ui/StatusMessage";
 
 type ConfiguredFolder = {
   id: string;
@@ -32,14 +32,12 @@ async function readApiError(response: Response): Promise<string> {
 export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
   const [folders, setFolders] = useState<ConfiguredFolder[]>(initialFolders);
   const [sourceUrl, setSourceUrl] = useState("");
-  const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState("");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [migratingId, setMigratingId] = useState<string | null>(null);
   const [migrateUrl, setMigrateUrl] = useState("");
   const [migrating, setMigrating] = useState(false);
-  const [migrateMessage, setMigrateMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
   const hasFolders = useMemo(() => folders.length > 0, [folders.length]);
 
@@ -59,7 +57,6 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
   async function handleAddFolder(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
-    setMessage(null);
 
     try {
       const response = await fetch("/api/config/folders", {
@@ -69,16 +66,16 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
       });
 
       if (!response.ok) {
-        setMessage({ text: await readApiError(response), type: "error" });
+        toast.error(await readApiError(response));
         return;
       }
 
       const parsed = (await response.json()) as { folder: ConfiguredFolder };
       setFolders((current) => [parsed.folder, ...current]);
       setSourceUrl("");
-      setMessage({ text: "Folder added successfully.", type: "success" });
+      toast.success("Folder added successfully.");
     } catch {
-      setMessage({ text: "Failed to add folder.", type: "error" });
+      toast.error("Failed to add folder.");
     } finally {
       setSubmitting(false);
     }
@@ -86,7 +83,6 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
 
   async function handleMigrateFolder(id: string) {
     setMigrating(true);
-    setMigrateMessage(null);
 
     try {
       const response = await fetch("/api/config/folders", {
@@ -96,23 +92,23 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
       });
 
       if (!response.ok) {
-        setMigrateMessage({ text: await readApiError(response), type: "error" });
+        toast.error(await readApiError(response));
         return;
       }
 
       const parsed = (await response.json()) as { folder: ConfiguredFolder };
       setFolders((current) => current.map((f) => (f.id === id ? parsed.folder : f)));
-      setMigrateMessage({ text: "Folder migrated successfully.", type: "success" });
+      toast.success("Folder migrated successfully.");
+      setMigratingId(null);
+      setMigrateUrl("");
     } catch {
-      setMigrateMessage({ text: "Failed to migrate folder.", type: "error" });
+      toast.error("Failed to migrate folder.");
     } finally {
       setMigrating(false);
     }
   }
 
   async function handleDeleteFolder(id: string) {
-    setMessage(null);
-
     const response = await fetch("/api/config/folders", {
       method: "DELETE",
       headers: { "content-type": "application/json" },
@@ -120,12 +116,12 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
     });
 
     if (!response.ok) {
-      setMessage({ text: await readApiError(response), type: "error" });
+      toast.error(await readApiError(response));
       return;
     }
 
     setFolders((current) => current.filter((folder) => folder.id !== id));
-    setMessage({ text: "Folder removed.", type: "success" });
+    toast.success("Folder removed.");
   }
 
   return (
@@ -153,8 +149,6 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
             {submitting ? "Saving..." : "Add folder"}
           </Button>
         </form>
-
-        {message ? <StatusMessage type={message.type} message={message.text} /> : null}
       </section>
 
       <section>
@@ -229,7 +223,6 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
                       onClick={() => {
                         setMigratingId(migratingId === folder.id ? null : folder.id);
                         setMigrateUrl("");
-                        setMigrateMessage(null);
                       }}
                     >
                       Migrate
@@ -263,14 +256,11 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
                       <Button
                         variant="secondary"
                         disabled={migrating}
-                        onClick={() => { setMigratingId(null); setMigrateUrl(""); setMigrateMessage(null); }}
+                        onClick={() => { setMigratingId(null); setMigrateUrl(""); }}
                       >
                         Cancel
                       </Button>
                     </div>
-                    {migrateMessage ? (
-                      <StatusMessage type={migrateMessage.type} message={migrateMessage.text} />
-                    ) : null}
                   </div>
                 )}
               </div>
