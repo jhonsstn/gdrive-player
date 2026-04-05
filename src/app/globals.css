@@ -99,11 +99,12 @@ body {
 }
 
 .mask-fade-right {
-  mask-image: linear-gradient(to right, black 85%, transparent 100%);
+  mask-image: linear-gradient(to right, black 90%, transparent 100%);
 }
 
 .marquee-content {
   display: block;
   width: fit-content;
   min-width: 100%;
+  padding-right: 40px; /* Extra space at the end to clear the mask */
 }
