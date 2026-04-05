@@ -44,7 +44,7 @@ function PlaylistItem({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
-  const [shouldAnimate, setShouldAnimate] = useState(false);
+  const [forceAnimate, setForceAnimate] = useState(false);
 
   const handleMouseEnter = () => {
     if (containerRef.current && textRef.current) {
@@ -52,22 +52,31 @@ function PlaylistItem({
       const textWidth = textRef.current.scrollWidth;
       
       if (textWidth > containerWidth) {
-        const distance = containerWidth - textWidth;
+        const diff = textWidth - containerWidth;
+        const distance = -diff;
+        
+        // Constant speed: e.g. 50 pixels per second
+        const speed = 50; 
+        const duration = Math.max(2, diff / speed);
+        
         containerRef.current.style.setProperty("--marquee-distance", `${distance}px`);
-        setShouldAnimate(true);
+        containerRef.current.style.setProperty("--marquee-duration", `${duration}s`);
+        setForceAnimate(true);
       } else {
-        setShouldAnimate(false);
+        setForceAnimate(false);
       }
     }
   };
 
   return (
     <div
-      className={`group flex w-full min-h-[48px] items-center gap-2 rounded-xl transition-all duration-300 animate-marquee-hover ${
+      className={`group flex w-full min-h-[48px] items-center gap-2 rounded-xl transition-all duration-300 ${
+        forceAnimate ? "animate-marquee-hover" : ""
+      } ${
         active ? "bg-zinc-800 shadow-md" : "hover:bg-zinc-800/80"
       }`}
       onMouseEnter={handleMouseEnter}
-      onMouseLeave={() => setShouldAnimate(false)}
+      onMouseLeave={() => setForceAnimate(false)}
     >
       <button
         type="button"
@@ -75,12 +84,12 @@ function PlaylistItem({
         className="flex flex-1 cursor-pointer items-center gap-4 border-none p-3 sm:p-4 text-left min-w-0"
       >
         <div className="flex-1 min-w-0 pr-2 pl-2">
-          <div ref={containerRef} className="relative overflow-hidden mask-fade-right">
+          <div ref={containerRef} className="relative overflow-hidden mask-fade-right h-6">
             <span 
               ref={textRef}
-              className={`marquee-content inline-block whitespace-nowrap font-semibold transition-colors duration-300 ${
+              className={`marquee-content whitespace-nowrap font-semibold transition-colors duration-300 leading-6 ${
                 active ? "text-blue-500" : "text-zinc-100 group-hover:text-white"
-              } ${shouldAnimate ? "" : "truncate block"}`}
+              } ${forceAnimate ? "" : "truncate"}`}
             >
               {parseEpisodeName(video.name)}
             </span>
