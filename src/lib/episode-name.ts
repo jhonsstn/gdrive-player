@@ -1,22 +1,8 @@
 /**
- * Helper to find the matching closing bracket for an opening bracket at a given index.
- */
-function getMatchingBracketIndex(s: string, start: number): number {
-  let depth = 0;
-  for (let i = start; i < s.length; i++) {
-    if (s[i] === "[") depth++;
-    else if (s[i] === "]") {
-      depth--;
-      if (depth === 0) return i;
-    }
-  }
-  return -1;
-}
-
-/**
  * Parses episode display names from filenames like:
  *   "[AniDong][Doupo Cangqiong 5] - Episódio 188.mp4" -> "Doupo Cangqiong 5 - 188"
  *   "[Ep. 04] Way of Choices - 1T [Metadata].mp4" -> "Way of Choices - 1T - 04"
+ *   "[Ep. 412 [476] a 414 [478] Wu Shang Shen Di - 2T" -> "Wu Shang Shen Di - 2T - 412 [476] a 414 [478]"
  *
  * Falls back to the original filename (without extension) if the pattern doesn't match.
  */
@@ -36,15 +22,27 @@ export function parseEpisodeName(filename: string): string {
   }
 
   // 2. Handle [Ep. XXX] prefix
+  // We use a more flexible approach here than strict bracket balancing because
+  // filenames often have typos or nested unbalanced brackets like:
+  // "[Ep. 412 [476] a 414 [478] Wu Shang Shen Di - 2T"
   if (name.startsWith("[Ep.")) {
-    const closingIndex = getMatchingBracketIndex(name, 0);
-    if (closingIndex !== -1) {
-      const epInfo = name.substring(4, closingIndex).trim();
-      const rest = name.substring(closingIndex + 1).trim();
+    const lastIndex = name.lastIndexOf("]");
+    if (lastIndex !== -1) {
+      const epInfo = name.substring(4, lastIndex).trim();
+      const rest = name.substring(lastIndex + 1).trim();
       if (rest) {
         return `${rest} - ${epInfo}`;
       }
-      return epInfo; // Fallback if only [Ep. XXX] exists
+      return epInfo;
+    } else {
+      // Fallback if no closing bracket found for [Ep.
+      // e.g. "[Ep. 412 Title"
+      const parts = name.substring(4).trim().split(/\s+/);
+      if (parts.length > 1) {
+        const ep = parts[0];
+        const rest = parts.slice(1).join(" ");
+        return `${rest} - ${ep}`;
+      }
     }
   }
 
@@ -58,16 +56,20 @@ export function parseEpisodeName(filename: string): string {
   // 4. Handle simple [Group][Title] without episode at the end
   const simpleGroupMatch = name.match(/^\[[^\]]+\]\[([^\]]+)\]/);
   if (simpleGroupMatch) {
-    const rest = name.substring(name.indexOf("]", name.indexOf("]") + 1) + 1).trim();
-    if (rest) {
-      // If there's more after the brackets, it might be an episode label
-      const epMatch = rest.match(/^(?:-\s*)?(?:.+?\s+)?(\d+)/);
-      if (epMatch) {
-        return `${simpleGroupMatch[1]} - ${epMatch[1]}`;
+    const firstClose = name.indexOf("]");
+    const secondClose = name.indexOf("]", firstClose + 1);
+    if (secondClose !== -1) {
+      const rest = name.substring(secondClose + 1).trim();
+      if (rest) {
+        // If there's more after the brackets, it might be an episode label
+        const epMatch = rest.match(/^(?:-\s*)?(?:.+?\s+)?(\d+)/);
+        if (epMatch) {
+          return `${simpleGroupMatch[1]} - ${epMatch[1]}`;
+        }
+        return `${simpleGroupMatch[1]} ${rest}`.trim();
       }
-      return `${simpleGroupMatch[1]} ${rest}`.trim();
+      return simpleGroupMatch[1];
     }
-    return simpleGroupMatch[1];
   }
 
   return name;

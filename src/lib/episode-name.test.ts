@@ -19,7 +19,7 @@ describe("parseEpisodeName", () => {
     );
   });
 
-  it("handles complex multiple episode ranges", () => {
+  it("handles balanced multiple episode ranges", () => {
     expect(parseEpisodeName("[Ep. 412 [476]  a 414 [478]] Wu Shang Shen Di - 2T [DonghuaNoSekai] [1080p] [PT-BR].mp4")).toBe(
       "Wu Shang Shen Di - 2T - 412 [476]  a 414 [478]",
     );
@@ -28,6 +28,18 @@ describe("parseEpisodeName", () => {
   it("handles [Ep. XXX a YYY] Title pattern", () => {
     expect(parseEpisodeName("[Ep. 331 a 332] 100.000 Years of Refining Qi - 1T [DonghuaNoSekai] [1080p] [PT-BR].mp4")).toBe(
       "100.000 Years of Refining Qi - 1T - 331 a 332",
+    );
+  });
+
+  it("handles unbalanced brackets in [Ep. XX] prefix (from image)", () => {
+    expect(parseEpisodeName("[Ep. 412 [476] a 414 [478] Wu Shang Shen Di - 2T [Metadata].mp4")).toBe(
+      "Wu Shang Shen Di - 2T - 412 [476] a 414 [478",
+    );
+  });
+
+  it("handles already cleaned names or standard patterns", () => {
+    expect(parseEpisodeName("Wu Shang Shen Di - 2T - 403 (467) a 405 (469).mp4")).toBe(
+      "Wu Shang Shen Di - 2T - 403 (467) a 405 (469)",
     );
   });
 
