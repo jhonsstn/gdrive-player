@@ -33,15 +33,15 @@ model FolderVideo {
 }
 
 model WatchProgress {
-  id            String      @id @default(cuid())
+  id            String       @id @default(cuid())
   userEmail     String
-  folderVideoId String
-  currentTime   Float       @default(0)
-  duration      Float       @default(0)
-  watched       Boolean     @default(false)
-  updatedAt     DateTime    @updatedAt
+  folderVideoId String?
+  currentTime   Float        @default(0)
+  duration      Float        @default(0)
+  watched       Boolean      @default(false)
+  updatedAt     DateTime     @updatedAt
 
-  folderVideo   FolderVideo @relation(fields: [folderVideoId], references: [id], onDelete: Cascade)
+  folderVideo   FolderVideo? @relation(fields: [folderVideoId], references: [id], onDelete: Cascade)
 
   @@unique([userEmail, folderVideoId])
 }

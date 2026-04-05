@@ -22,6 +22,11 @@ export async function POST() {
     select: { folderId: true },
   });
 
+  // Clean up old invalid progress rows that are blocking migration
+  await db.watchProgress.deleteMany({
+    where: { folderVideoId: null },
+  });
+
   let totalSynced = 0;
   for (const folder of folders) {
     try {
