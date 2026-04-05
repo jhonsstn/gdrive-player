@@ -21,6 +21,11 @@ type FolderMigrateBody = {
   sourceUrl?: string;
 };
 
+type FolderArchiveBody = {
+  id?: string;
+  archived?: boolean;
+};
+
 type AdminSession = Awaited<ReturnType<typeof auth>> & { accessToken: string };
 
 async function ensureAdmin(): Promise<NextResponse | AdminSession> {
@@ -201,6 +206,44 @@ export async function PATCH(request: Request) {
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json({ error: "Target folder already configured" }, { status: 409 });
+    }
+
+    throw error;
+  }
+}
+
+export async function PUT(request: Request) {
+  const result = await ensureAdmin();
+  if (result instanceof NextResponse) {
+    return result;
+  }
+
+  let body: FolderArchiveBody;
+
+  try {
+    body = (await request.json()) as FolderArchiveBody;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  if (!body.id) {
+    return NextResponse.json({ error: "id is required" }, { status: 400 });
+  }
+
+  if (typeof body.archived !== "boolean") {
+    return NextResponse.json({ error: "archived is required" }, { status: 400 });
+  }
+
+  try {
+    const updated = await db.configuredFolder.update({
+      where: { id: body.id },
+      data: { archived: body.archived },
+    });
+
+    return NextResponse.json({ folder: updated });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return NextResponse.json({ error: "Folder not found" }, { status: 404 });
     }
 
     throw error;

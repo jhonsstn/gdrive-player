@@ -6,12 +6,14 @@ import { toast } from "sonner";
 import { sortByNaturalName, type SortDirection } from "@/lib/sort";
 import { Button } from "@/components/ui/Button";
 import { SortButton } from "@/components/ui/SortButton";
+import { Badge } from "@/components/ui/Badge";
 
 type ConfiguredFolder = {
   id: string;
   folderId: string;
   name: string | null;
   sourceUrl: string;
+  archived: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -40,6 +42,7 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
   const [migrating, setMigrating] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [syncingAll, setSyncingAll] = useState(false);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
 
   const hasFolders = useMemo(() => folders.length > 0, [folders.length]);
 
@@ -50,10 +53,11 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
         (f.name ?? "").toLowerCase().includes(query) ||
         f.folderId.toLowerCase().includes(query),
     );
-    return sortByNaturalName(
+    const sorted = sortByNaturalName(
       filtered.map((f) => ({ ...f, name: f.name ?? "Unnamed folder" })),
       sortDirection,
     );
+    return [...sorted.filter((f) => !f.archived), ...sorted.filter((f) => f.archived)];
   }, [folders, search, sortDirection]);
 
   async function handleAddFolder(event: React.FormEvent<HTMLFormElement>) {
@@ -171,6 +175,30 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
     toast.success("Folder removed.");
   }
 
+  async function handleArchiveToggle(id: string, currentArchived: boolean) {
+    setArchivingId(id);
+    try {
+      const response = await fetch("/api/config/folders", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id, archived: !currentArchived }),
+      });
+
+      if (!response.ok) {
+        toast.error(await readApiError(response));
+        return;
+      }
+
+      const parsed = (await response.json()) as { folder: ConfiguredFolder };
+      setFolders((current) => current.map((f) => (f.id === id ? parsed.folder : f)));
+      toast.success(!currentArchived ? "Folder archived." : "Folder unarchived.");
+    } catch {
+      toast.error("Failed to toggle archive status.");
+    } finally {
+      setArchivingId(null);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 shadow-sm">
@@ -257,11 +285,14 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
             {displayedFolders.map((folder) => (
               <div
                 key={folder.id}
-                className="rounded-xl border border-zinc-800 bg-zinc-900 shadow-sm"
+                className={`rounded-xl border border-zinc-800 bg-zinc-900 shadow-sm transition-opacity${folder.archived ? " opacity-60" : ""}`}
               >
                 <div className="flex items-center justify-between px-6 py-5">
                   <div className="overflow-hidden pr-4">
-                    <p className="mb-1 font-medium text-zinc-50">{folder.name ?? "Unnamed folder"}</p>
+                    <div className="mb-1 flex items-center gap-2">
+                      <p className="font-medium text-zinc-50">{folder.name ?? "Unnamed folder"}</p>
+                      {folder.archived && <Badge variant="zinc" size="sm">Archived</Badge>}
+                    </div>
                     <code className="mb-2 inline-block rounded-md bg-zinc-800 px-2 py-1 text-[0.8rem] text-zinc-400">
                       ID: {folder.folderId}
                     </code>
@@ -288,6 +319,17 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
                       }}
                     >
                       Migrate
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      disabled={archivingId === folder.id}
+                      onClick={() => handleArchiveToggle(folder.id, folder.archived)}
+                    >
+                      {archivingId === folder.id
+                        ? "Saving…"
+                        : folder.archived
+                          ? "Unarchive"
+                          : "Archive"}
                     </Button>
                     <Button variant="destructive" onClick={() => handleDeleteFolder(folder.id)}>
                       Remove

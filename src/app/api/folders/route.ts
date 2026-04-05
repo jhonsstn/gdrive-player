@@ -11,6 +11,7 @@ export async function GET() {
   }
 
   const folders = await db.configuredFolder.findMany({
+    where: { archived: false },
     select: { id: true, folderId: true, name: true },
     orderBy: { createdAt: "asc" },
   });
