@@ -13,6 +13,24 @@ describe("parseEpisodeName", () => {
     expect(parseEpisodeName("[SubGroup][My Show] - Episode 42.mkv")).toBe("My Show - 42");
   });
 
+  it("handles [Ep. XX] Title [Metadata] pattern", () => {
+    expect(parseEpisodeName("[Ep. 04] Way of Choices - 1T [DonghuaNoSekai] [816p] [PT-BR].mp4")).toBe(
+      "Way of Choices - 1T - 04",
+    );
+  });
+
+  it("handles complex multiple episode ranges", () => {
+    expect(parseEpisodeName("[Ep. 412 [476]  a 414 [478]] Wu Shang Shen Di - 2T [DonghuaNoSekai] [1080p] [PT-BR].mp4")).toBe(
+      "Wu Shang Shen Di - 2T - 412 [476]  a 414 [478]",
+    );
+  });
+
+  it("handles [Ep. XXX a YYY] Title pattern", () => {
+    expect(parseEpisodeName("[Ep. 331 a 332] 100.000 Years of Refining Qi - 1T [DonghuaNoSekai] [1080p] [PT-BR].mp4")).toBe(
+      "100.000 Years of Refining Qi - 1T - 331 a 332",
+    );
+  });
+
   it("falls back to filename without extension for non-matching names", () => {
     expect(parseEpisodeName("random-video.mp4")).toBe("random-video");
   });
