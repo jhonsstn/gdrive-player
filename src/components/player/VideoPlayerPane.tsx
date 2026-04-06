@@ -23,6 +23,10 @@ type VideoPlayerPaneProps = {
   onEnded?: () => void;
   isWatched?: boolean;
   onToggleWatched?: (watched: boolean) => void;
+  onMarkAbove?: (watched: boolean) => void;
+  onMarkBelow?: (watched: boolean) => void;
+  canMarkAbove?: boolean;
+  canMarkBelow?: boolean;
   isMarkingVideo?: boolean;
 };
 
@@ -91,6 +95,10 @@ export function VideoPlayerPane({
   onEnded,
   isWatched,
   onToggleWatched,
+  onMarkAbove,
+  onMarkBelow,
+  canMarkAbove,
+  canMarkBelow,
   isMarkingVideo,
 }: VideoPlayerPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -283,7 +291,24 @@ export function VideoPlayerPane({
                   label: isMarkingVideo ? "Saving…" : isWatched ? "Mark as unwatched" : "Mark as watched",
                   onClick: () => { if (!isMarkingVideo) onToggleWatched(!isWatched); },
                   icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">{isWatched ? <><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></> : <polyline points="20 6 9 17 4 12"></polyline>}</svg>
-                }
+                },
+                ...(canMarkAbove || canMarkBelow ? [{ divider: true as const }] : []),
+                ...(canMarkAbove ? [
+                  {
+                    label: isWatched ? "Mark above as unwatched" : "Mark above as watched",
+                    disabled: isMarkingVideo,
+                    onClick: () => { if (!isMarkingVideo && onMarkAbove) onMarkAbove(!isWatched); },
+                    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                  }
+                ] : []),
+                ...(canMarkBelow ? [
+                  {
+                    label: isWatched ? "Mark below as unwatched" : "Mark below as watched",
+                    disabled: isMarkingVideo,
+                    onClick: () => { if (!isMarkingVideo && onMarkBelow) onMarkBelow(!isWatched); },
+                    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  }
+                ] : []),
               ]}
               align="left"
             />

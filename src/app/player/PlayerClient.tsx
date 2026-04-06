@@ -126,6 +126,59 @@ export function PlayerClient({
     });
   }
 
+  async function handleMarkRange(videoId: string, direction: "above" | "below", watched: boolean) {
+    if (isMarkingVideo) return;
+
+    const idx = videos.findIndex((v) => v.id === videoId);
+    if (idx < 0) return;
+
+    const slice = direction === "above" ? videos.slice(0, idx) : videos.slice(idx + 1);
+    const folderVideoIds = slice.map((v) => v.folderVideoId).filter((id): id is string => id !== null);
+    if (folderVideoIds.length === 0) return;
+
+    setIsMarkingVideo(true);
+
+    const promise = (async () => {
+      // 1. Optimistic update
+      const optimisticProgress: Record<string, { currentTime: number; duration: number; watched: boolean }> = {};
+      for (const fvid of folderVideoIds) {
+        optimisticProgress[fvid] = { currentTime: watched ? 1 : 0, duration: 1, watched };
+      }
+      void mutateProgress(
+        (prev: { progress: Record<string, { currentTime: number; duration: number; watched: boolean }> } | undefined) => ({
+          progress: { ...(prev?.progress ?? {}), ...optimisticProgress },
+        }),
+        { revalidate: false },
+      );
+
+      // 2. Server update
+      const res = await fetch("/api/progress/mark-range", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ folderVideoIds, watched }),
+      });
+
+      if (!res.ok) {
+        await mutateProgress();
+        throw new Error("Failed to update");
+      }
+
+      // 3. Revalidate
+      await invalidateAfterProgressUpdate(folderId);
+
+      return res;
+    })();
+
+    const count = folderVideoIds.length;
+    const label = count === 1 ? "1 video" : `${count} videos`;
+    toast.promise(promise, {
+      loading: watched ? `Marking ${label} as watched…` : `Marking ${label} as unwatched…`,
+      success: watched ? `${label} marked as watched` : `${label} marked as unwatched`,
+      error: "Failed to update videos",
+      finally: () => setIsMarkingVideo(false),
+    });
+  }
+
   async function handleMarkAll(watched: boolean) {
     if (isMarkingAll) return;
 
@@ -322,6 +375,8 @@ export function PlayerClient({
               onSelect={handleSelect}
               isWatched={isWatched}
               onToggleWatched={handleToggleWatched}
+              onMarkAbove={(videoId, watched) => void handleMarkRange(videoId, "above", watched)}
+              onMarkBelow={(videoId, watched) => void handleMarkRange(videoId, "below", watched)}
               isMarkingVideo={isMarkingVideo}
               hasMore={hasMore}
               onLoadMore={loadMore}
@@ -341,6 +396,14 @@ export function PlayerClient({
                 onToggleWatched={(watched) => {
                   if (currentVideo) handleToggleWatched(currentVideo.id, watched);
                 }}
+                onMarkAbove={(watched) => {
+                  if (currentVideo) void handleMarkRange(currentVideo.id, "above", watched);
+                }}
+                onMarkBelow={(watched) => {
+                  if (currentVideo) void handleMarkRange(currentVideo.id, "below", watched);
+                }}
+                canMarkAbove={currentIndex > 0}
+                canMarkBelow={currentIndex >= 0 && currentIndex < videos.length - 1}
                 isMarkingVideo={isMarkingVideo}
               />
             </div>

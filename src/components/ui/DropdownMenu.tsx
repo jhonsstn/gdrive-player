@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState, ReactNode } from "react";
 
 export type DropdownMenuItem = {
-  label: string;
+  label?: string;
   icon?: ReactNode;
-  onClick: () => void;
+  onClick?: () => void;
   disabled?: boolean;
+  divider?: boolean;
 };
 
 type DropdownMenuProps = {
@@ -58,21 +59,25 @@ export function DropdownMenu({ trigger, items, align = "right", className = "" }
             align === "right" ? "right-0" : "left-0"
           } z-20 mt-2 min-w-[160px] max-w-xs rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl`}
         >
-          {items.map((item, index) => (
-            <button
-              key={index}
-              type="button"
-              disabled={item.disabled}
-              onClick={() => {
-                item.onClick();
-                setIsOpen(false);
-              }}
-              className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {item.icon && <span className="flex-shrink-0">{item.icon}</span>}
-              <span className="truncate">{item.label}</span>
-            </button>
-          ))}
+          {items.map((item, index) =>
+            item.divider ? (
+              <div key={index} className="border-t border-zinc-700 my-1" />
+            ) : (
+              <button
+                key={index}
+                type="button"
+                disabled={item.disabled}
+                onClick={() => {
+                  item.onClick?.();
+                  setIsOpen(false);
+                }}
+                className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {item.icon && <span className="flex-shrink-0">{item.icon}</span>}
+                <span className="truncate">{item.label}</span>
+              </button>
+            )
+          )}
         </div>
       ) : null}
     </div>
