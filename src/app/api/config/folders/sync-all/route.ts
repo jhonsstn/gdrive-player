@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdminSession } from "@/lib/authz";
 import { db } from "@/lib/db";
-import { syncFolderVideos } from "@/lib/sync";
+import { syncAllFolders } from "@/lib/sync";
 
 export async function POST() {
   const session = await auth();
@@ -27,14 +27,9 @@ export async function POST() {
     where: { folderVideoId: null },
   });
 
-  let totalSynced = 0;
-  for (const folder of folders) {
-    try {
-      totalSynced += await syncFolderVideos(session.accessToken, folder.folderId);
-    } catch (error) {
-      console.error(`Failed to sync folder ${folder.folderId}:`, error);
-    }
-  }
+  const folderIds = folders.map((f) => f.folderId);
+  const results = await syncAllFolders(session.accessToken, folderIds);
+  const totalSynced = results.reduce((sum, r) => sum + (r.count ?? 0), 0);
 
   return NextResponse.json({ ok: true, count: totalSynced });
 }

@@ -39,6 +39,7 @@ type SortDirection = "asc" | "desc";
 export function useFolders() {
   return useSWR<{ folders: Folder[] }>("/api/folders", {
     dedupingInterval: 5 * 60 * 1000,
+    revalidateOnFocus: true,
   });
 }
 
@@ -89,7 +90,8 @@ export function useVideos(folderId: string, sort: SortDirection) {
     },
     {
       dedupingInterval: 2 * 60 * 1000,
-      revalidateFirstPage: false,
+      revalidateFirstPage: true,
+      revalidateOnFocus: true,
     },
   );
 

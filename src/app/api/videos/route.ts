@@ -2,9 +2,48 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { DriveRequestError, listFolderVideos, listFolderVideosPage } from "@/lib/drive";
+import { DriveRequestError, type DriveVideoFile, listFolderVideos, listFolderVideosPage } from "@/lib/drive";
 import { isAllowedVideoMimeType } from "@/lib/video-mime";
 import { parseSortDirection, sortByNaturalName } from "@/lib/sort";
+
+async function createMissingFolderVideos(
+  folderId: string,
+  videos: DriveVideoFile[],
+  existingMap: Map<string, string>,
+): Promise<Map<string, string>> {
+  const missing = videos.filter((v) => !existingMap.has(v.id));
+  if (missing.length === 0) return existingMap;
+
+  const updatedMap = new Map(existingMap);
+  try {
+    for (let i = 0; i < missing.length; i += 100) {
+      const batch = missing.slice(i, i + 100);
+      const results = await db.$transaction(
+        batch.map((v) =>
+          db.folderVideo.upsert({
+            where: { folderId_driveFileId: { folderId, driveFileId: v.id } },
+            create: {
+              folderId,
+              driveFileId: v.id,
+              name: v.name,
+              mimeType: v.mimeType,
+              size: v.size,
+              modifiedTime: v.modifiedTime ? new Date(v.modifiedTime) : null,
+            },
+            update: {},
+            select: { id: true, driveFileId: true },
+          }),
+        ),
+      );
+      for (const row of results) {
+        updatedMap.set(row.driveFileId, row.id);
+      }
+    }
+  } catch {
+    // Non-fatal — videos will have folderVideoId: null until next sync
+  }
+  return updatedMap;
+}
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -47,7 +86,8 @@ export async function GET(request: Request) {
         where: { folderId: folder.folderId, driveFileId: { in: driveFileIds } },
         select: { id: true, driveFileId: true },
       });
-      const folderVideoMap = new Map(folderVideoRows.map((fv) => [fv.driveFileId, fv.id]));
+      const initialMap = new Map(folderVideoRows.map((fv) => [fv.driveFileId, fv.id]));
+      const folderVideoMap = await createMissingFolderVideos(folder.folderId, pageVideos, initialMap);
 
       const videos = pageVideos.map((video) => ({
         ...video,
@@ -71,7 +111,7 @@ export async function GET(request: Request) {
         .map((video) => ({ ...video, folderId: folder.folderId, sourceUrl: folder.sourceUrl })),
     );
 
-    // Batch lookup folderVideoId for all videos
+    // Batch lookup folderVideoId for all videos, auto-creating missing rows
     const lookups = await Promise.all(
       folders.map((folder) =>
         db.folderVideo.findMany({
@@ -80,7 +120,16 @@ export async function GET(request: Request) {
         }),
       ),
     );
-    const folderVideoMap = new Map(lookups.flat().map((fv) => [fv.driveFileId, fv.id]));
+    const initialMap = new Map(lookups.flat().map((fv) => [fv.driveFileId, fv.id]));
+    const folderVideoMap = await Promise.all(
+      groupedVideos.map(({ folder, videos: vids }) =>
+        createMissingFolderVideos(folder.folderId, vids, initialMap),
+      ),
+    ).then((maps) => {
+      const merged = new Map(initialMap);
+      for (const m of maps) for (const [k, v] of m) merged.set(k, v);
+      return merged;
+    });
 
     const videos = sortByNaturalName(
       allDriveVideos.map((video) => ({
