@@ -129,33 +129,40 @@ export function PlayerClient({
   async function handleMarkRange(videoId: string, direction: "above" | "below", watched: boolean) {
     if (isMarkingVideo) return;
 
-    const idx = videos.findIndex((v) => v.id === videoId);
-    if (idx < 0) return;
-
-    const slice = direction === "above" ? videos.slice(0, idx) : videos.slice(idx + 1);
-    const folderVideoIds = slice.map((v) => v.folderVideoId).filter((id): id is string => id !== null);
-    if (folderVideoIds.length === 0) return;
+    const video = videos.find((v) => v.id === videoId);
+    if (!video?.folderVideoId) return;
 
     setIsMarkingVideo(true);
 
     const promise = (async () => {
-      // 1. Optimistic update
-      const optimisticProgress: Record<string, { currentTime: number; duration: number; watched: boolean }> = {};
-      for (const fvid of folderVideoIds) {
-        optimisticProgress[fvid] = { currentTime: watched ? 1 : 0, duration: 1, watched };
-      }
-      void mutateProgress(
-        (prev: { progress: Record<string, { currentTime: number; duration: number; watched: boolean }> } | undefined) => ({
-          progress: { ...(prev?.progress ?? {}), ...optimisticProgress },
-        }),
-        { revalidate: false },
-      );
+      // 1. Optimistic update for loaded videos
+      const idx = videos.findIndex((v) => v.id === videoId);
+      const loadedSlice = direction === "above" ? videos.slice(0, idx) : videos.slice(idx + 1);
+      const loadedFolderVideoIds = loadedSlice.map((v) => v.folderVideoId).filter((id): id is string => id !== null);
 
-      // 2. Server update
+      if (loadedFolderVideoIds.length > 0) {
+        const optimisticProgress: Record<string, { currentTime: number; duration: number; watched: boolean }> = {};
+        for (const fvid of loadedFolderVideoIds) {
+          optimisticProgress[fvid] = { currentTime: watched ? 1 : 0, duration: 1, watched };
+        }
+        void mutateProgress(
+          (prev: { progress: Record<string, { currentTime: number; duration: number; watched: boolean }> } | undefined) => ({
+            progress: { ...(prev?.progress ?? {}), ...optimisticProgress },
+          }),
+          { revalidate: false },
+        );
+      }
+
+      // 2. Server resolves the full range (all folder videos, not just loaded pages)
       const res = await fetch("/api/progress/mark-range", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ folderVideoIds, watched }),
+        body: JSON.stringify({
+          anchorFolderVideoId: video.folderVideoId,
+          direction,
+          watched,
+          sort: sortDirection,
+        }),
       });
 
       if (!res.ok) {
@@ -163,17 +170,20 @@ export function PlayerClient({
         throw new Error("Failed to update");
       }
 
-      // 3. Revalidate
+      const data = await res.json() as { markedCount: number };
+
+      // 3. Revalidate to pick up all server-side changes
       await invalidateAfterProgressUpdate(folderId);
 
-      return res;
+      return data;
     })();
 
-    const count = folderVideoIds.length;
-    const label = count === 1 ? "1 video" : `${count} videos`;
     toast.promise(promise, {
-      loading: watched ? `Marking ${label} as watched…` : `Marking ${label} as unwatched…`,
-      success: watched ? `${label} marked as watched` : `${label} marked as unwatched`,
+      loading: watched ? "Marking videos as watched…" : "Marking videos as unwatched…",
+      success: (data) => {
+        const label = data.markedCount === 1 ? "1 video" : `${data.markedCount} videos`;
+        return watched ? `${label} marked as watched` : `${label} marked as unwatched`;
+      },
       error: "Failed to update videos",
       finally: () => setIsMarkingVideo(false),
     });
