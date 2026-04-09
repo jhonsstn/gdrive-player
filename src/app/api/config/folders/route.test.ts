@@ -40,7 +40,7 @@ vi.mock("@/lib/drive", () => ({
 }));
 
 import { Prisma } from "@prisma/client";
-import { GET, PATCH, POST } from "@/app/api/config/folders/route";
+import { DELETE, GET, PATCH, POST, PUT } from "@/app/api/config/folders/route";
 
 describe("/api/config/folders", () => {
   beforeEach(() => {
@@ -257,6 +257,162 @@ describe("/api/config/folders", () => {
       const response = await PATCH(makeRequest({ id: "cfg_1", sourceUrl: newSourceUrl }));
 
       expect(response.status).toBe(200);
+    });
+
+    it("returns 400 for invalid JSON body", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+
+      const response = await PATCH(
+        new Request("http://localhost/api/config/folders", {
+          method: "PATCH",
+          body: "not-json",
+        }),
+      );
+
+      expect(response.status).toBe(400);
+      const body = await response.json() as { error: string };
+      expect(body.error).toMatch(/invalid json/i);
+    });
+  });
+
+  describe("PUT /api/config/folders (archive)", () => {
+    const adminSession = { user: { email: "admin@example.com" }, accessToken: "test-token" };
+
+    function makeRequest(body: unknown) {
+      return new Request("http://localhost/api/config/folders", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    }
+
+    it("returns 401 when not authenticated", async () => {
+      mocks.auth.mockResolvedValue(null);
+
+      const response = await PUT(makeRequest({ id: "cfg_1", archived: true }));
+
+      expect(response.status).toBe(401);
+    });
+
+    it("returns 400 when id is missing", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+
+      const response = await PUT(makeRequest({ archived: true }));
+
+      expect(response.status).toBe(400);
+      const body = await response.json() as { error: string };
+      expect(body.error).toMatch(/id/i);
+    });
+
+    it("returns 400 when archived is not a boolean", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+
+      const response = await PUT(makeRequest({ id: "cfg_1", archived: "yes" }));
+
+      expect(response.status).toBe(400);
+      const body = await response.json() as { error: string };
+      expect(body.error).toMatch(/archived/i);
+    });
+
+    it("archives a folder successfully", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+      const updatedFolder = { id: "cfg_1", folderId: "f1", archived: true, name: null, sourceUrl: "url", createdAt: new Date(), updatedAt: new Date() };
+      mocks.update.mockResolvedValue(updatedFolder);
+
+      const response = await PUT(makeRequest({ id: "cfg_1", archived: true }));
+
+      expect(response.status).toBe(200);
+      const body = await response.json() as { folder: typeof updatedFolder };
+      expect(body.folder.archived).toBe(true);
+      expect(mocks.update).toHaveBeenCalledWith({
+        where: { id: "cfg_1" },
+        data: { archived: true },
+      });
+    });
+
+    it("returns 404 when folder not found", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+      mocks.update.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError("Not found", { code: "P2025", clientVersion: "0.0.0" }),
+      );
+
+      const response = await PUT(makeRequest({ id: "nonexistent", archived: false }));
+
+      expect(response.status).toBe(404);
+    });
+  });
+
+  describe("DELETE /api/config/folders", () => {
+    const adminSession = { user: { email: "admin@example.com" }, accessToken: "test-token" };
+
+    function makeRequest(body: unknown) {
+      return new Request("http://localhost/api/config/folders", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    }
+
+    it("returns 401 when not authenticated", async () => {
+      mocks.auth.mockResolvedValue(null);
+
+      const response = await DELETE(makeRequest({ id: "cfg_1" }));
+
+      expect(response.status).toBe(401);
+    });
+
+    it("returns 400 when id is missing", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+
+      const response = await DELETE(makeRequest({}));
+
+      expect(response.status).toBe(400);
+      const body = await response.json() as { error: string };
+      expect(body.error).toMatch(/id/i);
+    });
+
+    it("deletes folder and related videos successfully", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+      mocks.findUnique.mockResolvedValue({ id: "cfg_1", folderId: "folder_drive_id", name: "My Folder" });
+      mocks.delete.mockResolvedValue({});
+
+      const response = await DELETE(makeRequest({ id: "cfg_1" }));
+
+      expect(response.status).toBe(200);
+      const body = await response.json() as { ok: boolean };
+      expect(body.ok).toBe(true);
+      expect(mocks.delete).toHaveBeenCalledWith({ where: { id: "cfg_1" } });
+    });
+
+    it("returns 200 even when folder is not found via findUnique (delete handles it)", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+      mocks.findUnique.mockResolvedValue(null);
+      mocks.delete.mockResolvedValue({});
+
+      const response = await DELETE(makeRequest({ id: "cfg_1" }));
+
+      expect(response.status).toBe(200);
+    });
+
+    it("returns 404 when configuredFolder.delete throws P2025", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+      mocks.findUnique.mockResolvedValue(null);
+      mocks.delete.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError("Not found", { code: "P2025", clientVersion: "0.0.0" }),
+      );
+
+      const response = await DELETE(makeRequest({ id: "nonexistent" }));
+
+      expect(response.status).toBe(404);
     });
   });
 });

@@ -54,4 +54,20 @@ describe("parseEpisodeName", () => {
   it("handles names with no extension", () => {
     expect(parseEpisodeName("no-extension")).toBe("no-extension");
   });
+
+  it("handles [Ep. XX] prefix with no closing bracket", () => {
+    expect(parseEpisodeName("[Ep. 05 My Title.mp4")).toBe("My Title - 05");
+  });
+
+  it("handles [Group][Title] with episode number after brackets", () => {
+    expect(parseEpisodeName("[Group][Show Title] Part2 42.mp4")).toBe("Show Title - 42");
+  });
+
+  it("handles [Group][Title] with non-episode text after brackets", () => {
+    expect(parseEpisodeName("[Group][Show Title] rest-text.mp4")).toBe("Show Title rest-text");
+  });
+
+  it("handles [Group][Title] with empty rest after brackets", () => {
+    expect(parseEpisodeName("[Group][Show Title] .mp4")).toBe("Show Title");
+  });
 });

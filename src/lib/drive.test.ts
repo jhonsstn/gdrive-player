@@ -6,8 +6,10 @@ vi.stubGlobal("fetch", mockFetch);
 import {
   DriveRequestError,
   getFolderName,
+  getLatestVideoModifiedTime,
   getStreamPassthroughHeaders,
   listFolderVideos,
+  listFolderVideosPage,
   streamDriveFile,
 } from "@/lib/drive";
 
@@ -186,6 +188,117 @@ describe("drive", () => {
       const source = new Headers();
       const result = getStreamPassthroughHeaders(source);
       expect([...result.entries()]).toHaveLength(0);
+    });
+  });
+
+  describe("listFolderVideosPage", () => {
+    it("returns videos and nextPageToken", async () => {
+      mockFetch.mockResolvedValue(
+        jsonResponse({
+          files: [
+            { id: "v1", name: "video.mp4", mimeType: "video/mp4", size: "1000", modifiedTime: "2024-01-01T00:00:00Z" },
+          ],
+          nextPageToken: "next_token",
+        }),
+      );
+
+      const { videos, nextPageToken } = await listFolderVideosPage("token", "folder_page_1", {});
+      expect(videos).toHaveLength(1);
+      expect(videos[0]).toEqual({
+        id: "v1",
+        name: "video.mp4",
+        mimeType: "video/mp4",
+        size: "1000",
+        folderId: "folder_page_1",
+        modifiedTime: "2024-01-01T00:00:00Z",
+      });
+      expect(nextPageToken).toBe("next_token");
+    });
+
+    it("returns cached result on second call with same params", async () => {
+      mockFetch.mockResolvedValue(
+        jsonResponse({ files: [{ id: "v1", name: "video.mp4", mimeType: "video/mp4" }] }),
+      );
+
+      await listFolderVideosPage("token", "folder_page_2", { pageSize: 10 });
+      await listFolderVideosPage("token", "folder_page_2", { pageSize: 10 });
+
+      expect(mockFetch).toHaveBeenCalledOnce();
+    });
+
+    it("uses different cache keys for different sort directions", async () => {
+      mockFetch.mockImplementation(() => Promise.resolve(jsonResponse({ files: [] })));
+
+      await listFolderVideosPage("token", "folder_page_3", { sortDirection: "asc" });
+      await listFolderVideosPage("token", "folder_page_3", { sortDirection: "desc" });
+
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it("includes pageToken in request URL when provided", async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ files: [] }));
+
+      await listFolderVideosPage("token", "folder_page_4", { pageToken: "my_page_token" });
+
+      const url = mockFetch.mock.calls[0][0] as string;
+      expect(url).toContain("pageToken=my_page_token");
+    });
+
+    it("skips files missing required fields", async () => {
+      mockFetch.mockResolvedValue(
+        jsonResponse({
+          files: [
+            { id: "v1", name: "video.mp4", mimeType: "video/mp4" },
+            { name: "no-id.mp4", mimeType: "video/mp4" },
+            { id: "v3", mimeType: "video/mp4" },
+          ],
+        }),
+      );
+
+      const { videos } = await listFolderVideosPage("token", "folder_page_5", {});
+      expect(videos).toHaveLength(1);
+      expect(videos[0].id).toBe("v1");
+    });
+
+    it("throws DriveRequestError on API failure", async () => {
+      mockFetch.mockResolvedValue(errorResponse(500, "Server Error"));
+
+      await expect(listFolderVideosPage("token", "folder_page_6", {})).rejects.toThrow(DriveRequestError);
+    });
+  });
+
+  describe("getLatestVideoModifiedTime", () => {
+    it("returns the most recently modified video time", async () => {
+      mockFetch.mockResolvedValue(
+        jsonResponse({ files: [{ modifiedTime: "2024-06-01T00:00:00Z" }] }),
+      );
+
+      const result = await getLatestVideoModifiedTime("token", "folder_latest_1");
+      expect(result).toBe("2024-06-01T00:00:00Z");
+    });
+
+    it("returns null when no files are found", async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ files: [] }));
+
+      const result = await getLatestVideoModifiedTime("token", "folder_latest_2");
+      expect(result).toBeNull();
+    });
+
+    it("returns cached result on second call", async () => {
+      mockFetch.mockResolvedValue(
+        jsonResponse({ files: [{ modifiedTime: "2024-01-01T00:00:00Z" }] }),
+      );
+
+      await getLatestVideoModifiedTime("token", "folder_latest_3");
+      await getLatestVideoModifiedTime("token", "folder_latest_3");
+
+      expect(mockFetch).toHaveBeenCalledOnce();
+    });
+
+    it("throws DriveRequestError on API failure", async () => {
+      mockFetch.mockResolvedValue(errorResponse(403, "Forbidden"));
+
+      await expect(getLatestVideoModifiedTime("token", "folder_latest_4")).rejects.toThrow(DriveRequestError);
     });
   });
 });

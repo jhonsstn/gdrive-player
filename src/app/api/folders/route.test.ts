@@ -54,6 +54,7 @@ describe("/api/folders", () => {
 
     expect(mocks.findMany).toHaveBeenCalledWith({
       select: { id: true, folderId: true, name: true },
+      where: { archived: false },
       orderBy: { createdAt: "asc" },
     });
   });
