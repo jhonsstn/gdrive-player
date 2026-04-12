@@ -43,6 +43,9 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [syncingAll, setSyncingAll] = useState(false);
   const [archivingId, setArchivingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
 
   const hasFolders = useMemo(() => folders.length > 0, [folders.length]);
 
@@ -199,6 +202,35 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
     }
   }
 
+  async function handleRenameFolder(id: string) {
+    const trimmed = editingName.trim();
+    if (!trimmed) return;
+
+    setRenamingId(id);
+    try {
+      const response = await fetch("/api/config/folders", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id, name: trimmed }),
+      });
+
+      if (!response.ok) {
+        toast.error(await readApiError(response));
+        return;
+      }
+
+      const parsed = (await response.json()) as { folder: ConfiguredFolder };
+      setFolders((current) => current.map((f) => (f.id === id ? parsed.folder : f)));
+      setEditingId(null);
+      setEditingName("");
+      toast.success("Folder renamed.");
+    } catch {
+      toast.error("Failed to rename folder.");
+    } finally {
+      setRenamingId(null);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 shadow-sm">
@@ -290,7 +322,56 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
                 <div className="flex items-center justify-between px-6 py-5">
                   <div className="overflow-hidden pr-4">
                     <div className="mb-1 flex items-center gap-2">
-                      <p className="font-medium text-zinc-50">{folder.name ?? "Unnamed folder"}</p>
+                      {editingId === folder.id ? (
+                        <>
+                          <input
+                            type="text"
+                            value={editingName}
+                            onChange={(e) => setEditingName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleRenameFolder(folder.id);
+                              if (e.key === "Escape") { setEditingId(null); setEditingName(""); }
+                            }}
+                            disabled={renamingId === folder.id}
+                            autoFocus
+                            className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1 text-sm font-medium text-zinc-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:opacity-50"
+                          />
+                          <button
+                            onClick={() => handleRenameFolder(folder.id)}
+                            disabled={renamingId === folder.id || !editingName.trim()}
+                            aria-label="Save name"
+                            className="text-zinc-400 transition-colors hover:text-blue-400 disabled:opacity-40"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => { setEditingId(null); setEditingName(""); }}
+                            disabled={renamingId === folder.id}
+                            aria-label="Cancel rename"
+                            className="text-zinc-400 transition-colors hover:text-zinc-200 disabled:opacity-40"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-medium text-zinc-50">{folder.name ?? "Unnamed folder"}</p>
+                          <button
+                            onClick={() => { setEditingId(folder.id); setEditingName(folder.name ?? ""); }}
+                            aria-label="Edit folder name"
+                            className="text-zinc-600 transition-colors hover:text-zinc-300"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                          </button>
+                        </>
+                      )}
                       {folder.archived && <Badge variant="zinc" size="sm">Archived</Badge>}
                     </div>
                     <code className="mb-2 inline-block rounded-md bg-zinc-800 px-2 py-1 text-[0.8rem] text-zinc-400">

@@ -276,7 +276,7 @@ describe("/api/config/folders", () => {
     });
   });
 
-  describe("PUT /api/config/folders (archive)", () => {
+  describe("PUT /api/config/folders", () => {
     const adminSession = { user: { email: "admin@example.com" }, accessToken: "test-token" };
 
     function makeRequest(body: unknown) {
@@ -315,6 +315,71 @@ describe("/api/config/folders", () => {
       expect(response.status).toBe(400);
       const body = await response.json() as { error: string };
       expect(body.error).toMatch(/archived/i);
+    });
+
+    it("returns 400 when neither archived nor name is provided", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+
+      const response = await PUT(makeRequest({ id: "cfg_1" }));
+
+      expect(response.status).toBe(400);
+      const body = await response.json() as { error: string };
+      expect(body.error).toMatch(/archived or name/i);
+    });
+
+    it("renames a folder successfully", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+      const updatedFolder = { id: "cfg_1", folderId: "f1", archived: false, name: "My Custom Name", sourceUrl: "url", createdAt: new Date(), updatedAt: new Date() };
+      mocks.update.mockResolvedValue(updatedFolder);
+
+      const response = await PUT(makeRequest({ id: "cfg_1", name: "My Custom Name" }));
+
+      expect(response.status).toBe(200);
+      const body = await response.json() as { folder: typeof updatedFolder };
+      expect(body.folder.name).toBe("My Custom Name");
+      expect(mocks.update).toHaveBeenCalledWith({
+        where: { id: "cfg_1" },
+        data: { name: "My Custom Name" },
+      });
+    });
+
+    it("trims whitespace from name", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+      const updatedFolder = { id: "cfg_1", folderId: "f1", archived: false, name: "Trimmed Name", sourceUrl: "url", createdAt: new Date(), updatedAt: new Date() };
+      mocks.update.mockResolvedValue(updatedFolder);
+
+      await PUT(makeRequest({ id: "cfg_1", name: "  Trimmed Name  " }));
+
+      expect(mocks.update).toHaveBeenCalledWith({
+        where: { id: "cfg_1" },
+        data: { name: "Trimmed Name" },
+      });
+    });
+
+    it("returns 400 when name is empty string", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+
+      const response = await PUT(makeRequest({ id: "cfg_1", name: "   " }));
+
+      expect(response.status).toBe(400);
+      const body = await response.json() as { error: string };
+      expect(body.error).toMatch(/name/i);
+    });
+
+    it("returns 404 when folder not found on rename", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+      mocks.update.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError("Not found", { code: "P2025", clientVersion: "0.0.0" }),
+      );
+
+      const response = await PUT(makeRequest({ id: "nonexistent", name: "New Name" }));
+
+      expect(response.status).toBe(404);
     });
 
     it("archives a folder successfully", async () => {

@@ -21,9 +21,10 @@ type FolderMigrateBody = {
   sourceUrl?: string;
 };
 
-type FolderArchiveBody = {
+type FolderUpdateBody = {
   id?: string;
   archived?: boolean;
+  name?: string;
 };
 
 type AdminSession = Awaited<ReturnType<typeof auth>> & { accessToken: string };
@@ -218,10 +219,10 @@ export async function PUT(request: Request) {
     return result;
   }
 
-  let body: FolderArchiveBody;
+  let body: FolderUpdateBody;
 
   try {
-    body = (await request.json()) as FolderArchiveBody;
+    body = (await request.json()) as FolderUpdateBody;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -230,14 +231,31 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
 
-  if (typeof body.archived !== "boolean") {
-    return NextResponse.json({ error: "archived is required" }, { status: 400 });
+  const data: { archived?: boolean; name?: string } = {};
+
+  if (body.archived !== undefined) {
+    if (typeof body.archived !== "boolean") {
+      return NextResponse.json({ error: "archived must be a boolean" }, { status: 400 });
+    }
+    data.archived = body.archived;
+  }
+
+  if (body.name !== undefined) {
+    const trimmed = typeof body.name === "string" ? body.name.trim() : "";
+    if (!trimmed) {
+      return NextResponse.json({ error: "name must be a non-empty string" }, { status: 400 });
+    }
+    data.name = trimmed;
+  }
+
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ error: "archived or name is required" }, { status: 400 });
   }
 
   try {
     const updated = await db.configuredFolder.update({
       where: { id: body.id },
-      data: { archived: body.archived },
+      data,
     });
 
     return NextResponse.json({ folder: updated });
