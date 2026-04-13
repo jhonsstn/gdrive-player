@@ -7,6 +7,18 @@ type Folder = {
   name: string | null;
 };
 
+type SeriesSeason = {
+  seasonNumber: number;
+  folderId: string;
+  folderName: string | null;
+};
+
+type SeriesItem = {
+  id: string;
+  name: string;
+  seasons: SeriesSeason[];
+};
+
 type ContinueWatchingItem = {
   videoId: string;
   videoName: string;
@@ -14,6 +26,9 @@ type ContinueWatchingItem = {
   currentTime: number;
   duration: number;
   updatedAt: string;
+  seriesId?: string;
+  seriesName?: string;
+  seasonNumber?: number;
 };
 
 type PlayerVideo = {
@@ -37,9 +52,29 @@ type SortDirection = "asc" | "desc";
 // ── Folders ──
 
 export function useFolders() {
-  return useSWR<{ folders: Folder[] }>("/api/folders", {
+  return useSWR<{ folders: Folder[]; series: SeriesItem[] }>("/api/folders", {
     dedupingInterval: 5 * 60 * 1000,
     revalidateOnFocus: true,
+  });
+}
+
+// ── Series Detail ──
+
+export function useSeriesDetail(seriesId: string | null) {
+  return useSWR<{
+    series: {
+      id: string;
+      name: string;
+      seasons: {
+        id: string;
+        seasonNumber: number;
+        folderId: string;
+        folderName: string | null;
+        archived: boolean;
+      }[];
+    };
+  }>(seriesId ? `/api/series/${seriesId}` : null, {
+    dedupingInterval: 2 * 60 * 1000,
   });
 }
 

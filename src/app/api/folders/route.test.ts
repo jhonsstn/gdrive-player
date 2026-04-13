@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   findMany: vi.fn(),
+  seasonFindMany: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({
@@ -13,6 +14,9 @@ vi.mock("@/lib/db", () => ({
   db: {
     configuredFolder: {
       findMany: mocks.findMany,
+    },
+    season: {
+      findMany: mocks.seasonFindMany,
     },
   },
 }));
@@ -34,6 +38,7 @@ describe("/api/folders", () => {
 
   it("returns folder list for authenticated users", async () => {
     mocks.auth.mockResolvedValue({ user: { email: "user@example.com" } });
+    mocks.seasonFindMany.mockResolvedValue([]);
     mocks.findMany.mockResolvedValue([
       { id: "cfg_1", folderId: "folder_1", name: "My Folder" },
       { id: "cfg_2", folderId: "folder_2", name: null },
@@ -45,12 +50,14 @@ describe("/api/folders", () => {
 
     const payload = (await response.json()) as {
       folders: Array<{ id: string; folderId: string; name: string | null }>;
+      series: Array<unknown>;
     };
 
     expect(payload.folders).toEqual([
       { id: "cfg_1", folderId: "folder_1", name: "My Folder" },
       { id: "cfg_2", folderId: "folder_2", name: null },
     ]);
+    expect(payload.series).toEqual([]);
 
     expect(mocks.findMany).toHaveBeenCalledWith({
       select: { id: true, folderId: true, name: true },

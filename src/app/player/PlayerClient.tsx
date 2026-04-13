@@ -21,6 +21,10 @@ type PlayerClientProps = {
   userName?: string | null;
   isAdmin?: boolean;
   initialVideoId?: string;
+  /** Override the displayed title (used by series player) */
+  title?: string;
+  /** Extra content rendered between header and playlist (e.g. season tabs) */
+  headerExtra?: React.ReactNode;
 };
 
 export function PlayerClient({
@@ -30,6 +34,8 @@ export function PlayerClient({
   userName,
   isAdmin = false,
   initialVideoId,
+  title,
+  headerExtra,
 }: PlayerClientProps) {
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
@@ -337,13 +343,15 @@ export function PlayerClient({
               ]}
               align="left"
             />
-            <h2 className="text-xl font-semibold tracking-tight">{folderName ?? "My Videos"}</h2>
+            <h2 className="text-xl font-semibold tracking-tight">{title ?? folderName ?? "My Videos"}</h2>
           </div>
           <SortButton
             direction={sortDirection}
             onToggle={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
           />
         </div>
+
+        {headerExtra}
 
         {statusMessage ? (
           <div className="mb-6 rounded-md border border-zinc-800 bg-zinc-900 p-4 text-center text-zinc-400">

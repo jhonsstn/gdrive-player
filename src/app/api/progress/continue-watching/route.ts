@@ -29,6 +29,9 @@ export async function GET() {
     currentTime: number;
     duration: number;
     updatedAt: string;
+    seriesId?: string;
+    seriesName?: string;
+    seasonNumber?: number;
   }[] = [];
 
   for (const row of rows) {
@@ -43,6 +46,27 @@ export async function GET() {
       duration: row.duration,
       updatedAt: row.updatedAt.toISOString(),
     });
+  }
+
+  // Enrich items with series metadata
+  const folderIds = items.map((i) => i.folderId);
+
+  if (folderIds.length > 0) {
+    const seasons = await db.season.findMany({
+      where: { folderId: { in: folderIds } },
+      include: { series: { select: { id: true, name: true } } },
+    });
+
+    const seasonByFolder = new Map(seasons.map((s) => [s.folderId, s]));
+
+    for (const item of items) {
+      const season = seasonByFolder.get(item.folderId);
+      if (season) {
+        item.seriesId = season.series.id;
+        item.seriesName = season.series.name;
+        item.seasonNumber = season.seasonNumber;
+      }
+    }
   }
 
   return NextResponse.json({ items });

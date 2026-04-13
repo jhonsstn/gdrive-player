@@ -54,9 +54,13 @@ export default async function ConfigPage() {
     );
   }
 
-  const folders = await db.configuredFolder.findMany({
-    orderBy: { createdAt: "desc" },
-  });
+  const [folders, seriesWithSeasons] = await Promise.all([
+    db.configuredFolder.findMany({ orderBy: { createdAt: "desc" } }),
+    db.series.findMany({
+      include: { seasons: { orderBy: { seasonNumber: "asc" } } },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -78,6 +82,19 @@ export default async function ConfigPage() {
             ...folder,
             createdAt: folder.createdAt.toISOString(),
             updatedAt: folder.updatedAt.toISOString(),
+          }))}
+          initialSeries={seriesWithSeasons.map((s) => ({
+            id: s.id,
+            name: s.name,
+            seasons: s.seasons.map((sn) => {
+              const folder = folders.find((f) => f.folderId === sn.folderId);
+              return {
+                id: sn.id,
+                seasonNumber: sn.seasonNumber,
+                folderId: sn.folderId,
+                folderName: folder?.name ?? null,
+              };
+            }),
           }))}
         />
       </main>

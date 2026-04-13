@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   findMany: vi.fn(),
+  seasonFindMany: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({
@@ -13,6 +14,9 @@ vi.mock("@/lib/db", () => ({
   db: {
     watchProgress: {
       findMany: mocks.findMany,
+    },
+    season: {
+      findMany: mocks.seasonFindMany,
     },
   },
 }));
@@ -33,6 +37,7 @@ describe("/api/progress/continue-watching", () => {
 
   it("returns in-progress videos grouped by folder (one per folder)", async () => {
     mocks.auth.mockResolvedValue({ user: { email: "u@t.com" } });
+    mocks.seasonFindMany.mockResolvedValue([]);
     const now = new Date("2024-06-01T00:00:00Z");
     mocks.findMany.mockResolvedValue([
       { folderVideo: { driveFileId: "v1", name: "Episode 1", folderId: "f1" }, currentTime: 120, duration: 600, updatedAt: now },
@@ -63,6 +68,7 @@ describe("/api/progress/continue-watching", () => {
 
   it("skips rows with null folderId", async () => {
     mocks.auth.mockResolvedValue({ user: { email: "u@t.com" } });
+    mocks.seasonFindMany.mockResolvedValue([]);
     mocks.findMany.mockResolvedValue([
       { folderVideo: null, currentTime: 50, duration: 600, updatedAt: new Date() },
       { folderVideo: { driveFileId: "v2", name: "Valid", folderId: "f1" }, currentTime: 50, duration: 600, updatedAt: new Date() },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { sortByNaturalName, type SortDirection } from "@/lib/sort";
@@ -18,8 +18,22 @@ type ConfiguredFolder = {
   updatedAt: string;
 };
 
+type SeriesSeason = {
+  id: string;
+  seasonNumber: number;
+  folderId: string;
+  folderName: string | null;
+};
+
+type Series = {
+  id: string;
+  name: string;
+  seasons: SeriesSeason[];
+};
+
 type FolderConfigFormProps = {
   initialFolders: ConfiguredFolder[];
+  initialSeries?: Series[];
 };
 
 async function readApiError(response: Response): Promise<string> {
@@ -31,7 +45,7 @@ async function readApiError(response: Response): Promise<string> {
   }
 }
 
-export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
+export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderConfigFormProps) {
   const [folders, setFolders] = useState<ConfiguredFolder[]>(initialFolders);
   const [sourceUrl, setSourceUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -47,7 +61,53 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
   const [editingName, setEditingName] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
 
+  // Series state
+  const [seriesList, setSeriesList] = useState<Series[]>(initialSeries);
+  const [addingToSeriesForFolderId, setAddingToSeriesForFolderId] = useState<string | null>(null);
+  const [selectedSeriesId, setSelectedSeriesId] = useState<string>("__new__");
+  const [newSeriesName, setNewSeriesName] = useState("");
+  const [seasonNumber, setSeasonNumber] = useState<number>(1);
+  const [savingSeriesSeason, setSavingSeriesSeason] = useState(false);
+  const [editingSeriesId, setEditingSeriesId] = useState<string | null>(null);
+  const [editingSeriesName, setEditingSeriesName] = useState("");
+  const [renamingSeriesId, setRenamingSeriesId] = useState<string | null>(null);
+  const [expandedSeriesId, setExpandedSeriesId] = useState<string | null>(null);
+
+  // Map folderId -> series info for quick lookup
+  const folderSeriesMap = useMemo(() => {
+    const map = new Map<string, { seriesId: string; seriesName: string; seasonNumber: number; seasonId: string }>();
+    for (const series of seriesList) {
+      for (const season of series.seasons) {
+        map.set(season.folderId, {
+          seriesId: series.id,
+          seriesName: series.name,
+          seasonNumber: season.seasonNumber,
+          seasonId: season.id,
+        });
+      }
+    }
+    return map;
+  }, [seriesList]);
+
   const hasFolders = useMemo(() => folders.length > 0, [folders.length]);
+
+  const refreshSeries = useCallback(async () => {
+    try {
+      const response = await fetch("/api/series");
+      if (response.ok) {
+        const data = (await response.json()) as { series: Series[] };
+        setSeriesList(data.series);
+      }
+    } catch {
+      // Silently fail — series list may be stale
+    }
+  }, []);
+
+  useEffect(() => {
+    if (initialSeries.length === 0) {
+      refreshSeries();
+    }
+  }, [initialSeries.length, refreshSeries]);
 
   const displayedFolders = useMemo(() => {
     const query = search.toLowerCase();
@@ -202,6 +262,128 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
     }
   }
 
+  async function handleAddToSeries(folderId: string) {
+    setSavingSeriesSeason(true);
+
+    try {
+      let seriesId = selectedSeriesId;
+
+      // Create new series if needed
+      if (seriesId === "__new__") {
+        const trimmed = newSeriesName.trim();
+        if (!trimmed) {
+          toast.error("Series name is required.");
+          setSavingSeriesSeason(false);
+          return;
+        }
+
+        const res = await fetch("/api/config/series", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ name: trimmed }),
+        });
+
+        if (!res.ok) {
+          toast.error(await readApiError(res));
+          setSavingSeriesSeason(false);
+          return;
+        }
+
+        const data = (await res.json()) as { series: { id: string; name: string } };
+        seriesId = data.series.id;
+      }
+
+      // Add season
+      const res = await fetch(`/api/config/series/${seriesId}/seasons`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ folderId, seasonNumber }),
+      });
+
+      if (!res.ok) {
+        toast.error(await readApiError(res));
+        return;
+      }
+
+      toast.success("Folder added to series.");
+      setAddingToSeriesForFolderId(null);
+      setSelectedSeriesId("__new__");
+      setNewSeriesName("");
+      setSeasonNumber(1);
+      await refreshSeries();
+    } catch {
+      toast.error("Failed to add folder to series.");
+    } finally {
+      setSavingSeriesSeason(false);
+    }
+  }
+
+  async function handleRemoveFromSeries(seasonId: string, seriesId: string) {
+    try {
+      const res = await fetch(`/api/config/series/${seriesId}/seasons/${seasonId}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        toast.error(await readApiError(res));
+        return;
+      }
+
+      toast.success("Folder removed from series.");
+      await refreshSeries();
+    } catch {
+      toast.error("Failed to remove folder from series.");
+    }
+  }
+
+  async function handleDeleteSeries(seriesId: string) {
+    try {
+      const res = await fetch(`/api/config/series/${seriesId}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        toast.error(await readApiError(res));
+        return;
+      }
+
+      toast.success("Series deleted.");
+      setSeriesList((current) => current.filter((s) => s.id !== seriesId));
+    } catch {
+      toast.error("Failed to delete series.");
+    }
+  }
+
+  async function handleRenameSeries(seriesId: string) {
+    const trimmed = editingSeriesName.trim();
+    if (!trimmed) return;
+
+    setRenamingSeriesId(seriesId);
+    try {
+      const res = await fetch(`/api/config/series/${seriesId}`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+
+      if (!res.ok) {
+        toast.error(await readApiError(res));
+        return;
+      }
+
+      setSeriesList((current) =>
+        current.map((s) => (s.id === seriesId ? { ...s, name: trimmed } : s)),
+      );
+      setEditingSeriesId(null);
+      setEditingSeriesName("");
+      toast.success("Series renamed.");
+    } catch {
+      toast.error("Failed to rename series.");
+    } finally {
+      setRenamingSeriesId(null);
+    }
+  }
+
   async function handleRenameFolder(id: string) {
     const trimmed = editingName.trim();
     if (!trimmed) return;
@@ -257,6 +439,113 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
           </Button>
         </form>
       </section>
+
+      {seriesList.length > 0 && (
+        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 shadow-sm">
+          <h3 className="mb-4 text-lg font-semibold tracking-tight">
+            Series ({seriesList.length})
+          </h3>
+          <div className="flex flex-col gap-3">
+            {seriesList.map((series) => (
+              <div key={series.id} className="rounded-lg border border-zinc-800 bg-zinc-950/50">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setExpandedSeriesId(expandedSeriesId === series.id ? null : series.id)}
+                      className="text-zinc-400 transition-colors hover:text-zinc-200"
+                      aria-label={expandedSeriesId === series.id ? "Collapse" : "Expand"}
+                    >
+                      <svg
+                        width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                        className={`transition-transform duration-200 ${expandedSeriesId === series.id ? "rotate-90" : ""}`}
+                      >
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </button>
+                    {editingSeriesId === series.id ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={editingSeriesName}
+                          onChange={(e) => setEditingSeriesName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleRenameSeries(series.id);
+                            if (e.key === "Escape") { setEditingSeriesId(null); setEditingSeriesName(""); }
+                          }}
+                          disabled={renamingSeriesId === series.id}
+                          autoFocus
+                          className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1 text-sm font-medium text-zinc-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:opacity-50"
+                        />
+                        <button
+                          onClick={() => handleRenameSeries(series.id)}
+                          disabled={renamingSeriesId === series.id || !editingSeriesName.trim()}
+                          aria-label="Save series name"
+                          className="text-zinc-400 transition-colors hover:text-blue-400 disabled:opacity-40"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => { setEditingSeriesId(null); setEditingSeriesName(""); }}
+                          aria-label="Cancel"
+                          className="text-zinc-400 transition-colors hover:text-zinc-200"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-zinc-50">{series.name}</span>
+                        <button
+                          onClick={() => { setEditingSeriesId(series.id); setEditingSeriesName(series.name); }}
+                          aria-label="Edit series name"
+                          className="text-zinc-600 transition-colors hover:text-zinc-300"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                          </svg>
+                        </button>
+                        <Badge variant="zinc" size="sm">{series.seasons.length} season{series.seasons.length !== 1 ? "s" : ""}</Badge>
+                      </div>
+                    )}
+                  </div>
+                  <Button variant="destructive" onClick={() => handleDeleteSeries(series.id)}>
+                    Delete
+                  </Button>
+                </div>
+                {expandedSeriesId === series.id && series.seasons.length > 0 && (
+                  <div className="border-t border-zinc-800 px-4 py-3">
+                    <div className="flex flex-col gap-2">
+                      {series.seasons.map((season) => (
+                        <div key={season.id} className="flex items-center justify-between rounded-md bg-zinc-900/50 px-3 py-2 text-sm">
+                          <div className="flex items-center gap-3">
+                            <Badge size="sm">S{season.seasonNumber}</Badge>
+                            <span className="text-zinc-300">{season.folderName ?? season.folderId}</span>
+                          </div>
+                          <button
+                            onClick={() => handleRemoveFromSeries(season.id, series.id)}
+                            aria-label="Remove from series"
+                            className="text-zinc-500 transition-colors hover:text-red-400"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section>
         <div className="mb-4 flex items-center justify-between gap-4">
@@ -373,6 +662,11 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
                         </>
                       )}
                       {folder.archived && <Badge variant="zinc" size="sm">Archived</Badge>}
+                      {folderSeriesMap.has(folder.folderId) && (
+                        <Badge size="sm">
+                          {folderSeriesMap.get(folder.folderId)!.seriesName} · S{folderSeriesMap.get(folder.folderId)!.seasonNumber}
+                        </Badge>
+                      )}
                     </div>
                     <code className="mb-2 inline-block rounded-md bg-zinc-800 px-2 py-1 text-[0.8rem] text-zinc-400">
                       ID: {folder.folderId}
@@ -392,6 +686,31 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
                     >
                       {syncingId === folder.id ? "Syncing…" : "Sync"}
                     </Button>
+                    {folderSeriesMap.has(folder.folderId) ? (
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          const info = folderSeriesMap.get(folder.folderId)!;
+                          handleRemoveFromSeries(info.seasonId, info.seriesId);
+                        }}
+                      >
+                        Remove from series
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setAddingToSeriesForFolderId(
+                            addingToSeriesForFolderId === folder.folderId ? null : folder.folderId,
+                          );
+                          setSelectedSeriesId(seriesList.length > 0 ? seriesList[0].id : "__new__");
+                          setNewSeriesName("");
+                          setSeasonNumber(1);
+                        }}
+                      >
+                        {addingToSeriesForFolderId === folder.folderId ? "Cancel" : "Add to series"}
+                      </Button>
+                    )}
                     <Button
                       variant="secondary"
                       onClick={() => {
@@ -442,6 +761,67 @@ export function FolderConfigForm({ initialFolders }: FolderConfigFormProps) {
                         variant="secondary"
                         disabled={migrating}
                         onClick={() => { setMigratingId(null); setMigrateUrl(""); }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {addingToSeriesForFolderId === folder.folderId && (
+                  <div className="border-t border-zinc-800 px-6 py-4">
+                    <p className="mb-3 text-sm text-zinc-400">
+                      Add this folder to a series as a season.
+                    </p>
+                    <div className="flex flex-wrap items-end gap-3">
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-zinc-500">Series</label>
+                        <select
+                          value={selectedSeriesId}
+                          onChange={(e) => setSelectedSeriesId(e.target.value)}
+                          disabled={savingSeriesSeason}
+                          className="rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:opacity-50"
+                        >
+                          {seriesList.map((s) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                          <option value="__new__">+ Create new series</option>
+                        </select>
+                      </div>
+                      {selectedSeriesId === "__new__" && (
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-zinc-500">Series name</label>
+                          <input
+                            type="text"
+                            value={newSeriesName}
+                            onChange={(e) => setNewSeriesName(e.target.value)}
+                            placeholder="e.g. Naruto"
+                            disabled={savingSeriesSeason}
+                            className="rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:opacity-50"
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-zinc-500">Season #</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={seasonNumber}
+                          onChange={(e) => setSeasonNumber(parseInt(e.target.value) || 1)}
+                          disabled={savingSeriesSeason}
+                          className="w-20 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:opacity-50"
+                        />
+                      </div>
+                      <Button
+                        variant="primary"
+                        disabled={savingSeriesSeason || (selectedSeriesId === "__new__" && !newSeriesName.trim())}
+                        onClick={() => handleAddToSeries(folder.folderId)}
+                      >
+                        {savingSeriesSeason ? "Saving…" : "Save"}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        disabled={savingSeriesSeason}
+                        onClick={() => setAddingToSeriesForFolderId(null)}
                       >
                         Cancel
                       </Button>

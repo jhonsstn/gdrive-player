@@ -25,9 +25,19 @@ export function FolderSelectionClient({
 
   const { data: foldersData, isLoading: isFoldersLoading, error: foldersError } = useFolders();
   const folders = useMemo(() => foldersData?.folders ?? [], [foldersData]);
+  const series = useMemo(() => foldersData?.series ?? [], [foldersData]);
 
-  const folderIds = useMemo(() => folders.map((f) => f.folderId), [folders]);
-  const { data: hasNewData } = useFoldersHasNew(folderIds);
+  // Collect all folder IDs (standalone + series seasons) for badge checks
+  const allFolderIds = useMemo(() => {
+    const ids = folders.map((f) => f.folderId);
+    for (const s of series) {
+      for (const sn of s.seasons) {
+        ids.push(sn.folderId);
+      }
+    }
+    return ids;
+  }, [folders, series]);
+  const { data: hasNewData } = useFoldersHasNew(allFolderIds);
 
   const notSeenFolderIds = useMemo(() => {
     if (!hasNewData?.hasNotSeen) return new Set<string>();
@@ -51,20 +61,36 @@ export function FolderSelectionClient({
   const continueWatching = cwData?.items ?? [];
 
   const isLoading = isFoldersLoading;
+  const hasItems = folders.length > 0 || series.length > 0;
   const statusMessage = foldersError
     ? "Failed to load folders"
-    : !isLoading && folders.length === 0
+    : !isLoading && !hasItems
       ? "No folders configured."
       : null;
 
-  const displayedFolders = useMemo(() => {
+  type ListItem =
+    | { kind: "folder"; id: string; name: string; folderId: string }
+    | { kind: "series"; id: string; name: string; seasonCount: number; folderIds: string[] };
+
+  const displayedItems = useMemo(() => {
     const query = search.toLowerCase();
-    const filtered = folders.filter((f) => (f.name ?? f.folderId).toLowerCase().includes(query));
-    return sortByNaturalName(
-      filtered.map((f) => ({ ...f, name: f.name ?? f.folderId })),
-      sortDirection,
-    );
-  }, [folders, search, sortDirection]);
+
+    const folderItems: ListItem[] = folders
+      .filter((f) => (f.name ?? f.folderId).toLowerCase().includes(query))
+      .map((f) => ({ kind: "folder", id: f.id, name: f.name ?? f.folderId, folderId: f.folderId }));
+
+    const seriesItems: ListItem[] = series
+      .filter((s) => s.name.toLowerCase().includes(query))
+      .map((s) => ({
+        kind: "series",
+        id: s.id,
+        name: s.name,
+        seasonCount: s.seasons.length,
+        folderIds: s.seasons.map((sn) => sn.folderId),
+      }));
+
+    return sortByNaturalName([...folderItems, ...seriesItems], sortDirection);
+  }, [folders, series, search, sortDirection]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -94,10 +120,13 @@ export function FolderSelectionClient({
               {continueWatching.map((item) => {
                 const folder = folders.find((f) => f.folderId === item.folderId);
                 const percent = item.duration > 0 ? (item.currentTime / item.duration) * 100 : 0;
+                const href = item.seriesId
+                  ? `/player/series/${item.seriesId}?season=${item.seasonNumber}&videoId=${item.videoId}`
+                  : `/player/${item.folderId}?videoId=${item.videoId}`;
                 return (
                   <Link
                     key={item.videoId}
-                    href={`/player/${item.folderId}?videoId=${item.videoId}`}
+                    href={href}
                     className="group relative flex w-72 shrink-0 snap-start flex-col justify-end overflow-hidden rounded-xl border border-zinc-800/60 bg-gradient-to-t from-zinc-900 via-zinc-900/80 to-zinc-800/30 p-5 transition-all duration-300 hover:border-zinc-700/80 hover:shadow-lg hover:shadow-black/20"
                   >
                     <div className="absolute inset-x-0 top-0 h-1 w-full bg-zinc-800/50">
@@ -125,16 +154,18 @@ export function FolderSelectionClient({
                         </h3>
                       </div>
 
-                      {folder && (
-                        <div className="mt-2 flex items-center justify-between">
-                          <p className="truncate text-xs text-zinc-500">
-                            {folder.name ?? folder.folderId}
-                          </p>
-                          <span className="shrink-0 text-[11px] font-medium tracking-wider text-zinc-600 uppercase">
-                            Resume
-                          </span>
-                        </div>
-                      )}
+                      <div className="mt-2 flex items-center justify-between">
+                        <p className="truncate text-xs text-zinc-500">
+                          {item.seriesName
+                            ? `${item.seriesName} · Season ${item.seasonNumber}`
+                            : folder
+                              ? (folder.name ?? folder.folderId)
+                              : item.folderId}
+                        </p>
+                        <span className="shrink-0 text-[11px] font-medium tracking-wider text-zinc-600 uppercase">
+                          Resume
+                        </span>
+                      </div>
                     </div>
                   </Link>
                 );
@@ -144,7 +175,7 @@ export function FolderSelectionClient({
         ) : null}
 
         <div className="mb-6 flex items-center justify-between gap-4">
-          <h2 className="text-xl font-semibold tracking-tight">Select a Folder</h2>
+          <h2 className="text-xl font-semibold tracking-tight">Library</h2>
           <SortButton
             direction={sortDirection}
             onToggle={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
@@ -178,52 +209,100 @@ export function FolderSelectionClient({
           <div className="rounded-md border border-zinc-800 bg-zinc-900 p-4 text-center text-zinc-400">
             {statusMessage}
           </div>
-        ) : displayedFolders.length === 0 ? (
+        ) : displayedItems.length === 0 ? (
           <div className="rounded-md border border-zinc-800 bg-zinc-900 p-4 text-center text-zinc-400">
-            No folders match your search.
+            No items match your search.
           </div>
         ) : (
           <div className="flex flex-col gap-1 -mx-4 sm:mx-0">
-            {displayedFolders.map((folder) => (
-              <Link
-                key={folder.id}
-                href={`/player/${folder.folderId}`}
-                className="group flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 rounded-xl px-4 py-4 transition-all duration-200 hover:bg-zinc-800/40"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-800/50 text-zinc-400 transition-colors group-hover:bg-zinc-800 group-hover:text-zinc-300">
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                    </svg>
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-3">
-                      <h3 className="truncate text-base font-medium text-zinc-100 transition-colors group-hover:text-blue-400">
-                        {folder.name ?? folder.folderId}
-                      </h3>
-                      {notSeenFolderIds.has(folder.folderId) ? (
-                        <Badge size="sm">Not seen</Badge>
-                      ) : null}
-                      {emptyFolderIds.has(folder.folderId) ? (
-                        <Badge size="sm" variant="zinc">Empty</Badge>
-                      ) : null}
+            {displayedItems.map((item) =>
+              item.kind === "folder" ? (
+                <Link
+                  key={`folder-${item.id}`}
+                  href={`/player/${item.folderId}`}
+                  className="group flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 rounded-xl px-4 py-4 transition-all duration-200 hover:bg-zinc-800/40"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-800/50 text-zinc-400 transition-colors group-hover:bg-zinc-800 group-hover:text-zinc-300">
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                      </svg>
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-3">
+                        <h3 className="truncate text-base font-medium text-zinc-100 transition-colors group-hover:text-blue-400">
+                          {item.name}
+                        </h3>
+                        {notSeenFolderIds.has(item.folderId) ? (
+                          <Badge size="sm">Not seen</Badge>
+                        ) : null}
+                        {emptyFolderIds.has(item.folderId) ? (
+                          <Badge size="sm" variant="zinc">Empty</Badge>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <p className="pl-14 sm:pl-0 font-mono text-xs text-zinc-600 transition-colors group-hover:text-zinc-500">
-                  {folder.folderId}
-                </p>
-              </Link>
-            ))}
+                  <p className="pl-14 sm:pl-0 font-mono text-xs text-zinc-600 transition-colors group-hover:text-zinc-500">
+                    {item.folderId}
+                  </p>
+                </Link>
+              ) : (
+                <Link
+                  key={`series-${item.id}`}
+                  href={`/player/series/${item.id}`}
+                  className="group flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 rounded-xl px-4 py-4 transition-all duration-200 hover:bg-zinc-800/40"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-800/50 text-zinc-400 transition-colors group-hover:bg-zinc-800 group-hover:text-zinc-300">
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                        <line x1="7" y1="2" x2="7" y2="22"></line>
+                        <line x1="17" y1="2" x2="17" y2="22"></line>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <line x1="2" y1="7" x2="7" y2="7"></line>
+                        <line x1="2" y1="17" x2="7" y2="17"></line>
+                        <line x1="17" y1="7" x2="22" y2="7"></line>
+                        <line x1="17" y1="17" x2="22" y2="17"></line>
+                      </svg>
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-3">
+                        <h3 className="truncate text-base font-medium text-zinc-100 transition-colors group-hover:text-blue-400">
+                          {item.name}
+                        </h3>
+                        {item.folderIds.some((fid) => notSeenFolderIds.has(fid)) ? (
+                          <Badge size="sm">Not seen</Badge>
+                        ) : null}
+                        {item.folderIds.every((fid) => emptyFolderIds.has(fid)) ? (
+                          <Badge size="sm" variant="zinc">Empty</Badge>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-zinc-500 pl-14 sm:pl-0">
+                    {item.seasonCount} {item.seasonCount === 1 ? "season" : "seasons"}
+                  </p>
+                </Link>
+              ),
+            )}
           </div>
         )}
       </main>
