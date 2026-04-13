@@ -267,6 +267,7 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
 
     try {
       let seriesId = selectedSeriesId;
+      let seriesName = seriesList.find((s) => s.id === seriesId)?.name ?? "";
 
       // Create new series if needed
       if (seriesId === "__new__") {
@@ -291,6 +292,7 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
 
         const data = (await res.json()) as { series: { id: string; name: string } };
         seriesId = data.series.id;
+        seriesName = data.series.name;
       }
 
       // Add season
@@ -305,12 +307,32 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
         return;
       }
 
+      const data = (await res.json()) as { season: { id: string } };
+      const folder = folders.find((f) => f.folderId === folderId);
+      const newSeason: SeriesSeason = {
+        id: data.season.id,
+        seasonNumber,
+        folderId,
+        folderName: folder?.name ?? null,
+      };
+
+      setSeriesList((current) => {
+        const existing = current.find((s) => s.id === seriesId);
+        if (existing) {
+          return current.map((s) =>
+            s.id === seriesId
+              ? { ...s, seasons: [...s.seasons, newSeason].sort((a, b) => a.seasonNumber - b.seasonNumber) }
+              : s,
+          );
+        }
+        return [...current, { id: seriesId, name: seriesName, seasons: [newSeason] }];
+      });
+
       toast.success("Folder added to series.");
       setAddingToSeriesForFolderId(null);
       setSelectedSeriesId("__new__");
       setNewSeriesName("");
       setSeasonNumber(1);
-      await refreshSeries();
     } catch {
       toast.error("Failed to add folder to series.");
     } finally {
@@ -329,8 +351,16 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
         return;
       }
 
+      setSeriesList((current) =>
+        current
+          .map((s) =>
+            s.id === seriesId
+              ? { ...s, seasons: s.seasons.filter((sn) => sn.id !== seasonId) }
+              : s,
+          )
+          .filter((s) => s.seasons.length > 0),
+      );
       toast.success("Folder removed from series.");
-      await refreshSeries();
     } catch {
       toast.error("Failed to remove folder from series.");
     }
