@@ -54,7 +54,7 @@ export function Dialog({ open, onClose, children, className = "" }: DialogProps)
     <dialog
       ref={dialogRef}
       onClick={handleClick}
-      className={`backdrop:bg-black/60 backdrop:backdrop-blur-sm open:animate-dialog-in bg-transparent p-0 ${className}`}
+      className={`fixed inset-0 m-auto backdrop:bg-black/60 backdrop:backdrop-blur-sm open:animate-dialog-in bg-transparent p-0 ${className}`}
     >
       {open ? children : null}
     </dialog>
