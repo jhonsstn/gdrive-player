@@ -7,6 +7,7 @@ import { sortByNaturalName, type SortDirection } from "@/lib/sort";
 import { Button } from "@/components/ui/Button";
 import { SortButton } from "@/components/ui/SortButton";
 import { Badge } from "@/components/ui/Badge";
+import { AddToSeriesDialog } from "@/components/config/AddToSeriesDialog";
 
 type ConfiguredFolder = {
   id: string;
@@ -63,10 +64,7 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
 
   // Series state
   const [seriesList, setSeriesList] = useState<Series[]>(initialSeries);
-  const [addingToSeriesForFolderId, setAddingToSeriesForFolderId] = useState<string | null>(null);
-  const [selectedSeriesId, setSelectedSeriesId] = useState<string>("__new__");
-  const [newSeriesName, setNewSeriesName] = useState("");
-  const [seasonNumber, setSeasonNumber] = useState<number>(1);
+  const [addingToSeriesForFolder, setAddingToSeriesForFolder] = useState<{ folderId: string; folderName: string } | null>(null);
   const [savingSeriesSeason, setSavingSeriesSeason] = useState(false);
   const [editingSeriesId, setEditingSeriesId] = useState<string | null>(null);
   const [editingSeriesName, setEditingSeriesName] = useState("");
@@ -262,16 +260,21 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
     }
   }
 
-  async function handleAddToSeries(folderId: string) {
+  async function handleAddToSeries(params: {
+    seriesId: string;
+    newSeriesName: string;
+    seasonNumber: number;
+    folderId: string;
+  }) {
     setSavingSeriesSeason(true);
 
     try {
-      let seriesId = selectedSeriesId;
+      let seriesId = params.seriesId;
       let seriesName = seriesList.find((s) => s.id === seriesId)?.name ?? "";
 
       // Create new series if needed
       if (seriesId === "__new__") {
-        const trimmed = newSeriesName.trim();
+        const trimmed = params.newSeriesName.trim();
         if (!trimmed) {
           toast.error("Series name is required.");
           setSavingSeriesSeason(false);
@@ -299,7 +302,7 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
       const res = await fetch(`/api/config/series/${seriesId}/seasons`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ folderId, seasonNumber }),
+        body: JSON.stringify({ folderId: params.folderId, seasonNumber: params.seasonNumber }),
       });
 
       if (!res.ok) {
@@ -308,11 +311,11 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
       }
 
       const data = (await res.json()) as { season: { id: string } };
-      const folder = folders.find((f) => f.folderId === folderId);
+      const folder = folders.find((f) => f.folderId === params.folderId);
       const newSeason: SeriesSeason = {
         id: data.season.id,
-        seasonNumber,
-        folderId,
+        seasonNumber: params.seasonNumber,
+        folderId: params.folderId,
         folderName: folder?.name ?? null,
       };
 
@@ -329,10 +332,7 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
       });
 
       toast.success("Folder added to series.");
-      setAddingToSeriesForFolderId(null);
-      setSelectedSeriesId("__new__");
-      setNewSeriesName("");
-      setSeasonNumber(1);
+      setAddingToSeriesForFolder(null);
     } catch {
       toast.error("Failed to add folder to series.");
     } finally {
@@ -730,15 +730,13 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
                       <Button
                         variant="secondary"
                         onClick={() => {
-                          setAddingToSeriesForFolderId(
-                            addingToSeriesForFolderId === folder.folderId ? null : folder.folderId,
-                          );
-                          setSelectedSeriesId(seriesList.length > 0 ? seriesList[0].id : "__new__");
-                          setNewSeriesName("");
-                          setSeasonNumber(1);
+                          setAddingToSeriesForFolder({
+                            folderId: folder.folderId,
+                            folderName: folder.name ?? "Unnamed folder",
+                          });
                         }}
                       >
-                        {addingToSeriesForFolderId === folder.folderId ? "Cancel" : "Add to series"}
+                        Add to series
                       </Button>
                     )}
                     <Button
@@ -797,72 +795,21 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
                     </div>
                   </div>
                 )}
-                {addingToSeriesForFolderId === folder.folderId && (
-                  <div className="border-t border-zinc-800 px-6 py-4">
-                    <p className="mb-3 text-sm text-zinc-400">
-                      Add this folder to a series as a season.
-                    </p>
-                    <div className="flex flex-wrap items-end gap-3">
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-zinc-500">Series</label>
-                        <select
-                          value={selectedSeriesId}
-                          onChange={(e) => setSelectedSeriesId(e.target.value)}
-                          disabled={savingSeriesSeason}
-                          className="rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:opacity-50"
-                        >
-                          {seriesList.map((s) => (
-                            <option key={s.id} value={s.id}>{s.name}</option>
-                          ))}
-                          <option value="__new__">+ Create new series</option>
-                        </select>
-                      </div>
-                      {selectedSeriesId === "__new__" && (
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-zinc-500">Series name</label>
-                          <input
-                            type="text"
-                            value={newSeriesName}
-                            onChange={(e) => setNewSeriesName(e.target.value)}
-                            placeholder="e.g. Naruto"
-                            disabled={savingSeriesSeason}
-                            className="rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-50 placeholder:text-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:opacity-50"
-                          />
-                        </div>
-                      )}
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-zinc-500">Season #</label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={seasonNumber}
-                          onChange={(e) => setSeasonNumber(parseInt(e.target.value) || 1)}
-                          disabled={savingSeriesSeason}
-                          className="w-20 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:opacity-50"
-                        />
-                      </div>
-                      <Button
-                        variant="primary"
-                        disabled={savingSeriesSeason || (selectedSeriesId === "__new__" && !newSeriesName.trim())}
-                        onClick={() => handleAddToSeries(folder.folderId)}
-                      >
-                        {savingSeriesSeason ? "Saving…" : "Save"}
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        disabled={savingSeriesSeason}
-                        onClick={() => setAddingToSeriesForFolderId(null)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </div>
             ))}
           </div>
         )}
       </section>
+
+      <AddToSeriesDialog
+        open={addingToSeriesForFolder !== null}
+        onClose={() => setAddingToSeriesForFolder(null)}
+        folderName={addingToSeriesForFolder?.folderName ?? ""}
+        folderId={addingToSeriesForFolder?.folderId ?? ""}
+        seriesList={seriesList}
+        saving={savingSeriesSeason}
+        onSave={handleAddToSeries}
+      />
     </div>
   );
 }
