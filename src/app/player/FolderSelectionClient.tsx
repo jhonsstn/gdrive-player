@@ -98,17 +98,22 @@ export function FolderSelectionClient({
 
       <main className="mx-auto w-full max-w-341.5 flex-1 p-8">
         {isContinueWatchingLoading ? (
-          <section className="mb-8">
+          <section className="mb-12">
             <div className="mb-4 h-6 w-48 animate-pulse rounded bg-zinc-800" />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-                  <div className="mb-3 flex items-center gap-3">
-                    <div className="h-6 w-6 shrink-0 animate-pulse rounded-full bg-zinc-800" />
-                    <div className="h-4 flex-1 animate-pulse rounded bg-zinc-800" />
+            <div className="flex gap-4 overflow-hidden pb-6 pt-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="relative w-72 shrink-0 overflow-hidden rounded-xl border border-zinc-800/60 bg-gradient-to-t from-zinc-900 via-zinc-900/80 to-zinc-800/30 p-5">
+                  <div className="absolute inset-x-0 top-0 h-1 w-full bg-zinc-800/50" />
+                  <div className="mt-6 flex flex-col gap-1">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 shrink-0 animate-pulse rounded-full bg-zinc-800" />
+                      <div className="h-4 flex-1 animate-pulse rounded bg-zinc-800" />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <div className="h-3 w-1/3 animate-pulse rounded bg-zinc-800" />
+                      <div className="h-3 w-12 animate-pulse rounded bg-zinc-800" />
+                    </div>
                   </div>
-                  <div className="mx-4 mb-3 h-3 w-1/3 animate-pulse rounded bg-zinc-800" />
-                  <div className="mx-4 mb-4 h-1 animate-pulse rounded-full bg-zinc-800" />
                 </div>
               ))}
             </div>
@@ -194,14 +199,14 @@ export function FolderSelectionClient({
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="flex flex-col gap-1 -mx-4 sm:mx-0">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-                <div className="mb-3 flex items-center gap-3">
-                  <div className="h-6 w-6 shrink-0 animate-pulse rounded-full bg-zinc-800" />
-                  <div className="h-4 flex-1 animate-pulse rounded bg-zinc-800" />
+              <div key={i} className="flex items-center justify-between gap-4 rounded-xl px-4 py-4">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 shrink-0 animate-pulse rounded-lg bg-zinc-800/50" />
+                  <div className="h-4 w-40 animate-pulse rounded bg-zinc-800" />
                 </div>
-                <div className="h-3 w-2/3 animate-pulse rounded bg-zinc-800" />
+                <div className="h-3 w-24 animate-pulse rounded bg-zinc-800" />
               </div>
             ))}
           </div>
