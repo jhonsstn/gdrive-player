@@ -20,6 +20,12 @@ services:
     volumes:
       - app-data:/data
     restart: unless-stopped
+    networks:
+      - caddy-net
+
+networks:
+  caddy-net:
+    external: true
 
 volumes:
   app-data:
