@@ -141,7 +141,7 @@ export function FolderSelectionClient({
                       />
                     </div>
 
-                    <div className="relative z-10 mt-6 flex flex-col gap-1">
+                    <div className="relative mt-6 flex flex-col gap-1">
                       <div className="flex items-center gap-3">
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-blue-500 transition-transform duration-300 group-hover:scale-110 group-hover:bg-blue-500 group-hover:text-white">
                           <svg
