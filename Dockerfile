@@ -1,5 +1,5 @@
-FROM node:22-alpine AS base
-RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
+FROM node:22-bookworm-slim AS base
+RUN npm install -g pnpm@10.30.3
 
 # --- Dependencies ---
 FROM base AS deps
