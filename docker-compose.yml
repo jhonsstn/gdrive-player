@@ -23,3 +23,5 @@ services:
 
 volumes:
   app-data:
+    external: true
+    name: gdrive-player_app-data
