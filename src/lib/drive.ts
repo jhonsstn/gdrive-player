@@ -234,11 +234,13 @@ export async function streamDriveFile(
   accessToken: string,
   fileId: string,
   rangeHeader?: string | null,
+  signal?: AbortSignal,
 ): Promise<Response> {
   const response = await fetch(
     `${DRIVE_API_BASE_URL}/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`,
     {
       headers: makeAuthHeaders(accessToken, rangeHeader ?? undefined),
+      signal,
     },
   );
 

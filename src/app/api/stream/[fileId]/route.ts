@@ -29,6 +29,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       session.accessToken,
       fileId,
       request.headers.get("range"),
+      request.signal,
     );
 
     const headers = getStreamPassthroughHeaders(upstream.headers);
@@ -43,6 +44,10 @@ export async function GET(request: Request, { params }: RouteParams) {
   } catch (error) {
     if (error instanceof DriveRequestError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+
+    if (error instanceof Error && error.name === "AbortError") {
+      return new Response(null, { status: 499 });
     }
 
     throw error;
