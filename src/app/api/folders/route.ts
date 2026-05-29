@@ -30,15 +30,18 @@ export async function GET() {
   // Build series list with season details
   const folderNameMap = new Map(allFolders.map((f) => [f.folderId, f.name]));
 
-  const seriesMap = new Map<string, {
-    id: string;
-    name: string;
-    seasons: { seasonNumber: number; folderId: string; folderName: string | null }[];
-  }>();
+  const seriesMap = new Map<
+    string,
+    {
+      id: string;
+      name: string;
+      seasons: { seasonNumber: number; folderId: string; folderName: string | null }[];
+    }
+  >();
 
   for (const season of seasons) {
-    // Skip seasons whose folder is archived (not in allFolders)
-    if (!folderNameMap.has(season.folderId) && !folderIdsInSeries.has(season.folderId)) continue;
+    // Skip seasons whose folder is archived or missing from configured folders.
+    if (!folderNameMap.has(season.folderId)) continue;
 
     if (!seriesMap.has(season.seriesId)) {
       seriesMap.set(season.seriesId, {
@@ -57,7 +60,10 @@ export async function GET() {
 
   const series = Array.from(seriesMap.values());
 
-  return NextResponse.json({ folders, series }, {
-    headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
-  });
+  return NextResponse.json(
+    { folders, series },
+    {
+      headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
+    },
+  );
 }

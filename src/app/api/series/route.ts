@@ -19,29 +19,34 @@ export async function GET() {
     orderBy: { name: "asc" },
   });
 
-  // Enrich seasons with folder names
+  // Enrich seasons with folder metadata. Config needs archived seasons visible
+  // so admins can unarchive them from the series list.
   const folderIds = seriesList.flatMap((s) => s.seasons.map((sn) => sn.folderId));
 
-  const folders = folderIds.length > 0
-    ? await db.configuredFolder.findMany({
-        where: { folderId: { in: folderIds }, archived: false },
-        select: { folderId: true, name: true },
-      })
-    : [];
+  const folders =
+    folderIds.length > 0
+      ? await db.configuredFolder.findMany({
+          where: { folderId: { in: folderIds } },
+          select: { id: true, folderId: true, name: true, archived: true },
+        })
+      : [];
 
-  const folderNameMap = new Map(folders.map((f) => [f.folderId, f.name]));
+  const folderMap = new Map(folders.map((f) => [f.folderId, f]));
 
   const series = seriesList.map((s) => ({
     id: s.id,
     name: s.name,
-    seasons: s.seasons
-      .filter((sn) => folderNameMap.has(sn.folderId))
-      .map((sn) => ({
+    seasons: s.seasons.map((sn) => {
+      const folder = folderMap.get(sn.folderId);
+      return {
         id: sn.id,
         seasonNumber: sn.seasonNumber,
         folderId: sn.folderId,
-        folderName: folderNameMap.get(sn.folderId) ?? null,
-      })),
+        folderName: folder?.name ?? null,
+        folderConfigId: folder?.id ?? null,
+        archived: folder?.archived ?? false,
+      };
+    }),
   }));
 
   return NextResponse.json(

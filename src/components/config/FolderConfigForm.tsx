@@ -24,6 +24,8 @@ type SeriesSeason = {
   seasonNumber: number;
   folderId: string;
   folderName: string | null;
+  folderConfigId: string | null;
+  archived: boolean;
 };
 
 type Series = {
@@ -58,13 +60,18 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [syncingAll, setSyncingAll] = useState(false);
   const [archivingId, setArchivingId] = useState<string | null>(null);
+  const [archivingSeasonId, setArchivingSeasonId] = useState<string | null>(null);
+  const [archivingSeriesId, setArchivingSeriesId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
 
   // Series state
   const [seriesList, setSeriesList] = useState<Series[]>(initialSeries);
-  const [addingToSeriesForFolder, setAddingToSeriesForFolder] = useState<{ folderId: string; folderName: string } | null>(null);
+  const [addingToSeriesForFolder, setAddingToSeriesForFolder] = useState<{
+    folderId: string;
+    folderName: string;
+  } | null>(null);
   const [savingSeriesSeason, setSavingSeriesSeason] = useState(false);
   const [editingSeriesId, setEditingSeriesId] = useState<string | null>(null);
   const [editingSeriesName, setEditingSeriesName] = useState("");
@@ -73,7 +80,10 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
 
   // Map folderId -> series info for quick lookup
   const folderSeriesMap = useMemo(() => {
-    const map = new Map<string, { seriesId: string; seriesName: string; seasonNumber: number; seasonId: string }>();
+    const map = new Map<
+      string,
+      { seriesId: string; seriesName: string; seasonNumber: number; seasonId: string }
+    >();
     for (const series of seriesList) {
       for (const season of series.seasons) {
         map.set(season.folderId, {
@@ -111,8 +121,7 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
     const query = search.toLowerCase();
     const filtered = folders.filter(
       (f) =>
-        (f.name ?? "").toLowerCase().includes(query) ||
-        f.folderId.toLowerCase().includes(query),
+        (f.name ?? "").toLowerCase().includes(query) || f.folderId.toLowerCase().includes(query),
     );
     const sorted = sortByNaturalName(
       filtered.map((f) => ({ ...f, name: f.name ?? "Unnamed folder" })),
@@ -212,7 +221,9 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
       }
 
       const parsed = (await response.json()) as { count: number };
-      toast.success(`Synced ${parsed.count} total video${parsed.count !== 1 ? "s" : ""} across all folders.`);
+      toast.success(
+        `Synced ${parsed.count} total video${parsed.count !== 1 ? "s" : ""} across all folders.`,
+      );
     } catch {
       toast.error("Failed to sync all folders.");
     } finally {
@@ -236,27 +247,86 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
     toast.success("Folder removed.");
   }
 
+  function applyFolderArchiveState(updatedFolder: ConfiguredFolder) {
+    setFolders((current) => current.map((f) => (f.id === updatedFolder.id ? updatedFolder : f)));
+    setSeriesList((current) =>
+      current.map((series) => ({
+        ...series,
+        seasons: series.seasons.map((season) =>
+          season.folderConfigId === updatedFolder.id
+            ? { ...season, archived: updatedFolder.archived, folderName: updatedFolder.name }
+            : season,
+        ),
+      })),
+    );
+  }
+
+  async function updateFolderArchiveState(id: string, archived: boolean) {
+    const response = await fetch("/api/config/folders", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id, archived }),
+    });
+
+    if (!response.ok) {
+      throw new Error(await readApiError(response));
+    }
+
+    const parsed = (await response.json()) as { folder: ConfiguredFolder };
+    applyFolderArchiveState(parsed.folder);
+    return parsed.folder;
+  }
+
   async function handleArchiveToggle(id: string, currentArchived: boolean) {
     setArchivingId(id);
     try {
-      const response = await fetch("/api/config/folders", {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id, archived: !currentArchived }),
-      });
-
-      if (!response.ok) {
-        toast.error(await readApiError(response));
-        return;
-      }
-
-      const parsed = (await response.json()) as { folder: ConfiguredFolder };
-      setFolders((current) => current.map((f) => (f.id === id ? parsed.folder : f)));
+      await updateFolderArchiveState(id, !currentArchived);
       toast.success(!currentArchived ? "Folder archived." : "Folder unarchived.");
-    } catch {
-      toast.error("Failed to toggle archive status.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to toggle archive status.");
     } finally {
       setArchivingId(null);
+    }
+  }
+
+  async function handleArchiveSeasonToggle(season: SeriesSeason) {
+    if (!season.folderConfigId) return;
+
+    setArchivingSeasonId(season.id);
+    try {
+      await updateFolderArchiveState(season.folderConfigId, !season.archived);
+      toast.success(!season.archived ? "Season archived." : "Season unarchived.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to toggle season archive status.",
+      );
+    } finally {
+      setArchivingSeasonId(null);
+    }
+  }
+
+  async function handleArchiveSeriesToggle(series: Series) {
+    const seasonsWithFolders = series.seasons.filter((season) => season.folderConfigId);
+    if (seasonsWithFolders.length === 0) return;
+
+    const shouldArchive = seasonsWithFolders.some((season) => !season.archived);
+    const targetSeasons = seasonsWithFolders.filter((season) => season.archived !== shouldArchive);
+    if (targetSeasons.length === 0) return;
+
+    setArchivingSeriesId(series.id);
+    try {
+      await Promise.all(
+        targetSeasons.map((season) =>
+          updateFolderArchiveState(season.folderConfigId!, shouldArchive),
+        ),
+      );
+      toast.success(shouldArchive ? "Series seasons archived." : "Series seasons unarchived.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to toggle series archive status.",
+      );
+    } finally {
+      setArchivingSeriesId(null);
     }
   }
 
@@ -317,6 +387,8 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
         seasonNumber: params.seasonNumber,
         folderId: params.folderId,
         folderName: folder?.name ?? null,
+        folderConfigId: folder?.id ?? null,
+        archived: folder?.archived ?? false,
       };
 
       setSeriesList((current) => {
@@ -324,7 +396,12 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
         if (existing) {
           return current.map((s) =>
             s.id === seriesId
-              ? { ...s, seasons: [...s.seasons, newSeason].sort((a, b) => a.seasonNumber - b.seasonNumber) }
+              ? {
+                  ...s,
+                  seasons: [...s.seasons, newSeason].sort(
+                    (a, b) => a.seasonNumber - b.seasonNumber,
+                  ),
+                }
               : s,
           );
         }
@@ -354,9 +431,7 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
       setSeriesList((current) =>
         current
           .map((s) =>
-            s.id === seriesId
-              ? { ...s, seasons: s.seasons.filter((sn) => sn.id !== seasonId) }
-              : s,
+            s.id === seriesId ? { ...s, seasons: s.seasons.filter((sn) => sn.id !== seasonId) } : s,
           )
           .filter((s) => s.seasons.length > 0),
       );
@@ -476,103 +551,206 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
             Series ({seriesList.length})
           </h3>
           <div className="flex flex-col gap-3">
-            {seriesList.map((series) => (
-              <div key={series.id} className="rounded-lg border border-zinc-800 bg-zinc-950/50">
-                <div className="flex items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setExpandedSeriesId(expandedSeriesId === series.id ? null : series.id)}
-                      className="text-zinc-400 transition-colors hover:text-zinc-200"
-                      aria-label={expandedSeriesId === series.id ? "Collapse" : "Expand"}
-                    >
-                      <svg
-                        width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                        className={`transition-transform duration-200 ${expandedSeriesId === series.id ? "rotate-90" : ""}`}
+            {seriesList.map((series) => {
+              const seasonsWithFolders = series.seasons.filter((season) => season.folderConfigId);
+              const hasUnarchivedSeason = seasonsWithFolders.some((season) => !season.archived);
+              const seriesArchiveLabel = hasUnarchivedSeason ? "Archive" : "Unarchive";
+              const isSeriesArchiveDisabled =
+                seasonsWithFolders.length === 0 || archivingSeriesId === series.id;
+
+              return (
+                <div key={series.id} className="rounded-lg border border-zinc-800 bg-zinc-950/50">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() =>
+                          setExpandedSeriesId(expandedSeriesId === series.id ? null : series.id)
+                        }
+                        className="text-zinc-400 transition-colors hover:text-zinc-200"
+                        aria-label={expandedSeriesId === series.id ? "Collapse" : "Expand"}
                       >
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
-                    </button>
-                    {editingSeriesId === series.id ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={editingSeriesName}
-                          onChange={(e) => setEditingSeriesName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleRenameSeries(series.id);
-                            if (e.key === "Escape") { setEditingSeriesId(null); setEditingSeriesName(""); }
-                          }}
-                          disabled={renamingSeriesId === series.id}
-                          autoFocus
-                          className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1 text-sm font-medium text-zinc-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:opacity-50"
-                        />
-                        <button
-                          onClick={() => handleRenameSeries(series.id)}
-                          disabled={renamingSeriesId === series.id || !editingSeriesName.trim()}
-                          aria-label="Save series name"
-                          className="text-zinc-400 transition-colors hover:text-blue-400 disabled:opacity-40"
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className={`transition-transform duration-200 ${expandedSeriesId === series.id ? "rotate-90" : ""}`}
                         >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => { setEditingSeriesId(null); setEditingSeriesName(""); }}
-                          aria-label="Cancel"
-                          className="text-zinc-400 transition-colors hover:text-zinc-200"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                          </svg>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-zinc-50">{series.name}</span>
-                        <button
-                          onClick={() => { setEditingSeriesId(series.id); setEditingSeriesName(series.name); }}
-                          aria-label="Edit series name"
-                          className="text-zinc-600 transition-colors hover:text-zinc-300"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                          </svg>
-                        </button>
-                        <Badge variant="zinc" size="sm">{series.seasons.length} season{series.seasons.length !== 1 ? "s" : ""}</Badge>
-                      </div>
-                    )}
-                  </div>
-                  <Button variant="destructive" onClick={() => handleDeleteSeries(series.id)}>
-                    Delete
-                  </Button>
-                </div>
-                {expandedSeriesId === series.id && series.seasons.length > 0 && (
-                  <div className="border-t border-zinc-800 px-4 py-3">
-                    <div className="flex flex-col gap-2">
-                      {series.seasons.map((season) => (
-                        <div key={season.id} className="flex items-center justify-between rounded-md bg-zinc-900/50 px-3 py-2 text-sm">
-                          <div className="flex items-center gap-3">
-                            <Badge size="sm">S{season.seasonNumber}</Badge>
-                            <span className="text-zinc-300">{season.folderName ?? season.folderId}</span>
-                          </div>
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      </button>
+                      {editingSeriesId === series.id ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={editingSeriesName}
+                            onChange={(e) => setEditingSeriesName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleRenameSeries(series.id);
+                              if (e.key === "Escape") {
+                                setEditingSeriesId(null);
+                                setEditingSeriesName("");
+                              }
+                            }}
+                            disabled={renamingSeriesId === series.id}
+                            autoFocus
+                            className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1 text-sm font-medium text-zinc-50 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none disabled:opacity-50"
+                          />
                           <button
-                            onClick={() => handleRemoveFromSeries(season.id, series.id)}
-                            aria-label="Remove from series"
-                            className="text-zinc-500 transition-colors hover:text-red-400"
+                            onClick={() => handleRenameSeries(series.id)}
+                            disabled={renamingSeriesId === series.id || !editingSeriesName.trim()}
+                            aria-label="Save series name"
+                            className="text-zinc-400 transition-colors hover:text-blue-400 disabled:opacity-40"
                           >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingSeriesId(null);
+                              setEditingSeriesName("");
+                            }}
+                            aria-label="Cancel"
+                            className="text-zinc-400 transition-colors hover:text-zinc-200"
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <line x1="18" y1="6" x2="6" y2="18" />
+                              <line x1="6" y1="6" x2="18" y2="18" />
                             </svg>
                           </button>
                         </div>
-                      ))}
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-zinc-50">{series.name}</span>
+                          <button
+                            onClick={() => {
+                              setEditingSeriesId(series.id);
+                              setEditingSeriesName(series.name);
+                            }}
+                            aria-label="Edit series name"
+                            className="text-zinc-600 transition-colors hover:text-zinc-300"
+                          >
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                          </button>
+                          <Badge variant="zinc" size="sm">
+                            {series.seasons.length} season{series.seasons.length !== 1 ? "s" : ""}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="secondary"
+                        disabled={isSeriesArchiveDisabled}
+                        onClick={() => handleArchiveSeriesToggle(series)}
+                      >
+                        {archivingSeriesId === series.id ? "Saving…" : seriesArchiveLabel}
+                      </Button>
+                      <Button variant="destructive" onClick={() => handleDeleteSeries(series.id)}>
+                        Delete
+                      </Button>
                     </div>
                   </div>
-                )}
-              </div>
-            ))}
+                  {expandedSeriesId === series.id && series.seasons.length > 0 && (
+                    <div className="border-t border-zinc-800 px-4 py-3">
+                      <div className="flex flex-col gap-2">
+                        {series.seasons.map((season) => (
+                          <div
+                            key={season.id}
+                            className="flex items-center justify-between rounded-md bg-zinc-900/50 px-3 py-2 text-sm"
+                          >
+                            <div className="flex items-center gap-3">
+                              <Badge size="sm">S{season.seasonNumber}</Badge>
+                              <span className="text-zinc-300">
+                                {season.folderName ?? season.folderId}
+                              </span>
+                              {season.archived && (
+                                <Badge variant="zinc" size="sm">
+                                  Archived
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {season.folderConfigId && (
+                                <Button
+                                  variant="secondary"
+                                  disabled={
+                                    archivingSeasonId === season.id ||
+                                    archivingSeriesId === series.id
+                                  }
+                                  onClick={() => handleArchiveSeasonToggle(season)}
+                                  className="px-2 py-1 text-xs"
+                                >
+                                  {archivingSeasonId === season.id
+                                    ? "Saving…"
+                                    : season.archived
+                                      ? "Unarchive"
+                                      : "Archive"}
+                                </Button>
+                              )}
+                              <button
+                                onClick={() => handleRemoveFromSeries(season.id, series.id)}
+                                aria-label="Remove from series"
+                                className="text-zinc-500 transition-colors hover:text-red-400"
+                              >
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <line x1="18" y1="6" x2="6" y2="18" />
+                                  <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
@@ -636,7 +814,10 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
             {displayedFolders.map((folder) => (
               <div
                 key={folder.id}
-                className={`rounded-xl border border-zinc-800 bg-zinc-900 shadow-sm transition-opacity${folder.archived ? " opacity-60" : ""}`}
+                className={[
+                  "rounded-xl border border-zinc-800 bg-zinc-900 shadow-sm transition-opacity",
+                  folder.archived ? "opacity-60" : "",
+                ].join(" ")}
               >
                 <div className="flex items-center justify-between px-6 py-5">
                   <div className="overflow-hidden pr-4">
@@ -649,7 +830,10 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
                             onChange={(e) => setEditingName(e.target.value)}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") handleRenameFolder(folder.id);
-                              if (e.key === "Escape") { setEditingId(null); setEditingName(""); }
+                              if (e.key === "Escape") {
+                                setEditingId(null);
+                                setEditingName("");
+                              }
                             }}
                             disabled={renamingId === folder.id}
                             autoFocus
@@ -661,40 +845,81 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
                             aria-label="Save name"
                             className="text-zinc-400 transition-colors hover:text-blue-400 disabled:opacity-40"
                           >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
                               <polyline points="20 6 9 17 4 12" />
                             </svg>
                           </button>
                           <button
-                            onClick={() => { setEditingId(null); setEditingName(""); }}
+                            onClick={() => {
+                              setEditingId(null);
+                              setEditingName("");
+                            }}
                             disabled={renamingId === folder.id}
                             aria-label="Cancel rename"
                             className="text-zinc-400 transition-colors hover:text-zinc-200 disabled:opacity-40"
                           >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <line x1="18" y1="6" x2="6" y2="18" />
+                              <line x1="6" y1="6" x2="18" y2="18" />
                             </svg>
                           </button>
                         </>
                       ) : (
                         <>
-                          <p className="font-medium text-zinc-50">{folder.name ?? "Unnamed folder"}</p>
+                          <p className="font-medium text-zinc-50">
+                            {folder.name ?? "Unnamed folder"}
+                          </p>
                           <button
-                            onClick={() => { setEditingId(folder.id); setEditingName(folder.name ?? ""); }}
+                            onClick={() => {
+                              setEditingId(folder.id);
+                              setEditingName(folder.name ?? "");
+                            }}
                             aria-label="Edit folder name"
                             className="text-zinc-600 transition-colors hover:text-zinc-300"
                           >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
                               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                             </svg>
                           </button>
                         </>
                       )}
-                      {folder.archived && <Badge variant="zinc" size="sm">Archived</Badge>}
+                      {folder.archived && (
+                        <Badge variant="zinc" size="sm">
+                          Archived
+                        </Badge>
+                      )}
                       {folderSeriesMap.has(folder.folderId) && (
                         <Badge size="sm">
-                          {folderSeriesMap.get(folder.folderId)!.seriesName} · S{folderSeriesMap.get(folder.folderId)!.seasonNumber}
+                          {folderSeriesMap.get(folder.folderId)!.seriesName} · S
+                          {folderSeriesMap.get(folder.folderId)!.seasonNumber}
                         </Badge>
                       )}
                     </div>
@@ -788,7 +1013,10 @@ export function FolderConfigForm({ initialFolders, initialSeries = [] }: FolderC
                       <Button
                         variant="secondary"
                         disabled={migrating}
-                        onClick={() => { setMigratingId(null); setMigrateUrl(""); }}
+                        onClick={() => {
+                          setMigratingId(null);
+                          setMigrateUrl("");
+                        }}
                       >
                         Cancel
                       </Button>

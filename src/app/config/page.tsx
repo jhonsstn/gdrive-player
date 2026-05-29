@@ -93,6 +93,8 @@ export default async function ConfigPage() {
                 seasonNumber: sn.seasonNumber,
                 folderId: sn.folderId,
                 folderName: folder?.name ?? null,
+                folderConfigId: folder?.id ?? null,
+                archived: folder?.archived ?? false,
               };
             }),
           }))}
