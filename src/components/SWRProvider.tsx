@@ -13,11 +13,26 @@ async function fetcher<T>(url: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+let isRedirectingToSignIn = false;
+
+function redirectToSignIn() {
+  if (isRedirectingToSignIn || typeof window === "undefined") return;
+
+  isRedirectingToSignIn = true;
+  const callbackUrl = `${window.location.pathname}${window.location.search}`;
+  window.location.assign(`/api/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+}
+
 export function SWRProvider({ children }: { children: React.ReactNode }) {
   return (
     <SWRConfig
       value={{
         fetcher,
+        onError: (error) => {
+          if ((error as Error & { status?: number }).status === 401) {
+            redirectToSignIn();
+          }
+        },
         revalidateOnFocus: false,
         dedupingInterval: 2000,
       }}
