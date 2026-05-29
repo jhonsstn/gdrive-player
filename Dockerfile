@@ -15,13 +15,13 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Dummy values for build-time env validation (overridden at runtime)
-ENV DATABASE_URL="file:./build.db"
-ENV AUTH_SECRET="build-placeholder"
-ENV AUTH_GOOGLE_ID="build-placeholder"
-ENV AUTH_GOOGLE_SECRET="build-placeholder"
-ENV ADMIN_EMAILS="build@placeholder"
-RUN pnpm exec prisma generate
-RUN pnpm run build
+RUN DATABASE_URL="file:./build.db" pnpm exec prisma generate
+RUN DATABASE_URL="file:./build.db" \
+    AUTH_SECRET="build-placeholder" \
+    AUTH_GOOGLE_ID="build-placeholder" \
+    AUTH_GOOGLE_SECRET="build-placeholder" \
+    ADMIN_EMAILS="build@placeholder" \
+    pnpm run build
 
 # --- Runner ---
 FROM base AS runner
