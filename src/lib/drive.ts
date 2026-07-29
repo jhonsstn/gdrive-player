@@ -3,9 +3,13 @@ import { TTLCache } from "@/lib/cache";
 
 const DRIVE_API_BASE_URL = "https://www.googleapis.com/drive/v3";
 
-const videosPageCache = new TTLCache<{ videos: DriveVideoFile[]; nextPageToken: string | undefined }>(2 * 60 * 1000);
+const videosPageCache = new TTLCache<{
+  videos: DriveVideoFile[];
+  nextPageToken: string | undefined;
+}>(2 * 60 * 1000);
 const latestModifiedCache = new TTLCache<string | null>(60 * 1000);
-const DRIVE_LIST_FIELDS = "nextPageToken,files(id,name,mimeType,size,modifiedTime)";
+const DRIVE_LIST_FIELDS =
+  "nextPageToken,files(id,name,mimeType,size,modifiedTime,md5Checksum,sha1Checksum,sha256Checksum)";
 
 export type DriveVideoFile = {
   id: string;
@@ -14,6 +18,9 @@ export type DriveVideoFile = {
   size: string | null;
   folderId: string;
   modifiedTime: string | null;
+  md5Checksum: string | null;
+  sha1Checksum: string | null;
+  sha256Checksum: string | null;
 };
 
 export class DriveRequestError extends Error {
@@ -34,6 +41,9 @@ type DriveListResponse = {
     mimeType?: string;
     size?: string;
     modifiedTime?: string;
+    md5Checksum?: string;
+    sha1Checksum?: string;
+    sha256Checksum?: string;
   }>;
 };
 
@@ -135,6 +145,9 @@ export async function listFolderVideos(
         size: file.size ?? null,
         folderId,
         modifiedTime: file.modifiedTime ?? null,
+        md5Checksum: file.md5Checksum ?? null,
+        sha1Checksum: file.sha1Checksum ?? null,
+        sha256Checksum: file.sha256Checksum ?? null,
       });
     }
 
@@ -190,6 +203,9 @@ export async function listFolderVideosPage(
       size: file.size ?? null,
       folderId,
       modifiedTime: file.modifiedTime ?? null,
+      md5Checksum: file.md5Checksum ?? null,
+      sha1Checksum: file.sha1Checksum ?? null,
+      sha256Checksum: file.sha256Checksum ?? null,
     });
   }
 

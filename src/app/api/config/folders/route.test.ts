@@ -10,6 +10,13 @@ const mocks = vi.hoisted(() => ({
   delete: vi.fn(),
   transaction: vi.fn(),
   getFolderName: vi.fn(),
+  listFolderVideos: vi.fn(),
+  folderVideoFindMany: vi.fn(),
+  folderVideoUpdate: vi.fn(),
+  folderVideoCreate: vi.fn(),
+  folderVideoDeleteMany: vi.fn(),
+  seasonUpdateMany: vi.fn(),
+  lastSeenUpdateMany: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({
@@ -29,22 +36,45 @@ vi.mock("@/lib/db", () => ({
       update: mocks.update,
       delete: mocks.delete,
     },
-    folderVideo: { deleteMany: vi.fn() },
-    userFolderLastSeen: { updateMany: vi.fn() },
+    folderVideo: {
+      findMany: mocks.folderVideoFindMany,
+      update: mocks.folderVideoUpdate,
+      create: mocks.folderVideoCreate,
+      deleteMany: mocks.folderVideoDeleteMany,
+    },
+    season: { updateMany: mocks.seasonUpdateMany },
+    userFolderLastSeen: { updateMany: mocks.lastSeenUpdateMany },
     $transaction: mocks.transaction,
   },
 }));
 
 vi.mock("@/lib/drive", () => ({
   getFolderName: mocks.getFolderName,
+  listFolderVideos: mocks.listFolderVideos,
+  DriveRequestError: class DriveRequestError extends Error {
+    constructor(
+      message: string,
+      public readonly status: number,
+    ) {
+      super(message);
+    }
+  },
 }));
 
 import { Prisma } from "@prisma/client";
+import { DriveRequestError } from "@/lib/drive";
 import { DELETE, GET, PATCH, POST, PUT } from "@/app/api/config/folders/route";
 
 describe("/api/config/folders", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.listFolderVideos.mockResolvedValue([]);
+    mocks.folderVideoFindMany.mockResolvedValue([]);
+    mocks.folderVideoUpdate.mockResolvedValue({});
+    mocks.folderVideoCreate.mockResolvedValue({});
+    mocks.folderVideoDeleteMany.mockResolvedValue({ count: 0 });
+    mocks.seasonUpdateMany.mockResolvedValue({ count: 0 });
+    mocks.lastSeenUpdateMany.mockResolvedValue({ count: 0 });
   });
 
   it("returns 403 for non-admin users", async () => {
@@ -142,7 +172,7 @@ describe("/api/config/folders", () => {
       const response = await PATCH(makeRequest({ sourceUrl: newSourceUrl }));
 
       expect(response.status).toBe(400);
-      const body = await response.json() as { error: string };
+      const body = (await response.json()) as { error: string };
       expect(body.error).toMatch(/id/i);
     });
 
@@ -153,7 +183,7 @@ describe("/api/config/folders", () => {
       const response = await PATCH(makeRequest({ id: "cfg_1" }));
 
       expect(response.status).toBe(400);
-      const body = await response.json() as { error: string };
+      const body = (await response.json()) as { error: string };
       expect(body.error).toMatch(/sourceUrl/i);
     });
 
@@ -189,7 +219,7 @@ describe("/api/config/folders", () => {
       );
 
       expect(response.status).toBe(400);
-      const body = await response.json() as { error: string };
+      const body = (await response.json()) as { error: string };
       expect(body.error).toMatch(/same folder/i);
     });
 
@@ -230,33 +260,120 @@ describe("/api/config/folders", () => {
       const response = await PATCH(makeRequest({ id: "cfg_1", sourceUrl: newSourceUrl }));
 
       expect(response.status).toBe(200);
-      const body = await response.json() as { folder: typeof updatedFolder };
+      const body = (await response.json()) as { folder: typeof updatedFolder };
       expect(body.folder.folderId).toBe("newFolderDriveId");
       expect(mocks.getFolderName).toHaveBeenCalledWith("test-token", "newFolderDriveId");
       expect(mocks.transaction).toHaveBeenCalled();
     });
 
-    it("proceeds without name when Drive API fails", async () => {
+    it("remaps copied videos in place so watch progress keeps its relation", async () => {
       mocks.auth.mockResolvedValue(adminSession);
       mocks.isAdminSession.mockReturnValue(true);
       mocks.findUnique.mockResolvedValue(existingFolder);
-      mocks.getFolderName.mockRejectedValue(new Error("Drive API error"));
-
-      const updatedFolder = {
+      mocks.getFolderName.mockResolvedValue("New Folder");
+      mocks.folderVideoFindMany.mockResolvedValue([
+        {
+          id: "stable-catalog-id",
+          folderId: "oldFolderDriveId",
+          driveFileId: "old-video-id",
+          name: "Episode 01.mp4",
+          mimeType: "video/mp4",
+          size: "1000",
+          _count: { watchProgress: 1 },
+        },
+      ]);
+      mocks.listFolderVideos
+        .mockResolvedValueOnce([
+          {
+            id: "old-video-id",
+            name: "Episode 01.mp4",
+            mimeType: "video/mp4",
+            size: "1000",
+            modifiedTime: "2026-01-01T00:00:00.000Z",
+            sha256Checksum: "same-content",
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: "new-video-id",
+            name: "Episode 01.mp4",
+            mimeType: "video/mp4",
+            size: "1000",
+            modifiedTime: "2026-02-01T00:00:00.000Z",
+            sha256Checksum: "same-content",
+          },
+        ]);
+      mocks.update.mockResolvedValue({
         ...existingFolder,
         folderId: "newFolderDriveId",
         sourceUrl: newSourceUrl,
-        name: null,
-      };
-
-      mocks.transaction.mockImplementation(async (ops: unknown[]) => {
-        return Promise.all(ops.map((op) => (op instanceof Promise ? op : Promise.resolve(op))));
       });
-      mocks.update.mockResolvedValue(updatedFolder);
+      mocks.transaction.mockImplementation(async (ops: unknown[]) => Promise.all(ops));
 
       const response = await PATCH(makeRequest({ id: "cfg_1", sourceUrl: newSourceUrl }));
 
       expect(response.status).toBe(200);
+      expect(mocks.folderVideoUpdate).toHaveBeenCalledWith({
+        where: { id: "stable-catalog-id" },
+        data: expect.objectContaining({
+          folderId: "newFolderDriveId",
+          driveFileId: "new-video-id",
+        }),
+      });
+      expect(mocks.seasonUpdateMany).toHaveBeenCalledWith({
+        where: { folderId: "oldFolderDriveId" },
+        data: { folderId: "newFolderDriveId" },
+      });
+      expect(mocks.folderVideoDeleteMany).toHaveBeenCalledWith({
+        where: { id: { in: [] } },
+      });
+    });
+
+    it("stops before deleting a video with unmatched watch history", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+      mocks.findUnique.mockResolvedValue(existingFolder);
+      mocks.getFolderName.mockResolvedValue("New Folder");
+      mocks.folderVideoFindMany.mockResolvedValue([
+        {
+          id: "stable-catalog-id",
+          folderId: "oldFolderDriveId",
+          driveFileId: "old-video-id",
+          name: "Unmatched.mp4",
+          mimeType: "video/mp4",
+          size: "1000",
+          _count: { watchProgress: 1 },
+        },
+      ]);
+      mocks.listFolderVideos.mockResolvedValueOnce([]).mockResolvedValueOnce([
+        {
+          id: "different-video-id",
+          name: "Different.mp4",
+          mimeType: "video/mp4",
+          size: "2000",
+          modifiedTime: null,
+        },
+      ]);
+
+      const response = await PATCH(makeRequest({ id: "cfg_1", sourceUrl: newSourceUrl }));
+      const body = (await response.json()) as { migration: { unmatchedWithHistory: number } };
+
+      expect(response.status).toBe(409);
+      expect(body.migration.unmatchedWithHistory).toBe(1);
+      expect(mocks.transaction).not.toHaveBeenCalled();
+      expect(mocks.folderVideoDeleteMany).not.toHaveBeenCalled();
+    });
+
+    it("does not migrate when the target folder cannot be inspected", async () => {
+      mocks.auth.mockResolvedValue(adminSession);
+      mocks.isAdminSession.mockReturnValue(true);
+      mocks.findUnique.mockResolvedValue(existingFolder);
+      mocks.getFolderName.mockRejectedValue(new DriveRequestError("Drive API error", 403));
+
+      const response = await PATCH(makeRequest({ id: "cfg_1", sourceUrl: newSourceUrl }));
+
+      expect(response.status).toBe(403);
+      expect(mocks.transaction).not.toHaveBeenCalled();
     });
 
     it("returns 400 for invalid JSON body", async () => {
@@ -271,7 +388,7 @@ describe("/api/config/folders", () => {
       );
 
       expect(response.status).toBe(400);
-      const body = await response.json() as { error: string };
+      const body = (await response.json()) as { error: string };
       expect(body.error).toMatch(/invalid json/i);
     });
   });
@@ -302,7 +419,7 @@ describe("/api/config/folders", () => {
       const response = await PUT(makeRequest({ archived: true }));
 
       expect(response.status).toBe(400);
-      const body = await response.json() as { error: string };
+      const body = (await response.json()) as { error: string };
       expect(body.error).toMatch(/id/i);
     });
 
@@ -313,7 +430,7 @@ describe("/api/config/folders", () => {
       const response = await PUT(makeRequest({ id: "cfg_1", archived: "yes" }));
 
       expect(response.status).toBe(400);
-      const body = await response.json() as { error: string };
+      const body = (await response.json()) as { error: string };
       expect(body.error).toMatch(/archived/i);
     });
 
@@ -324,20 +441,28 @@ describe("/api/config/folders", () => {
       const response = await PUT(makeRequest({ id: "cfg_1" }));
 
       expect(response.status).toBe(400);
-      const body = await response.json() as { error: string };
+      const body = (await response.json()) as { error: string };
       expect(body.error).toMatch(/archived or name/i);
     });
 
     it("renames a folder successfully", async () => {
       mocks.auth.mockResolvedValue(adminSession);
       mocks.isAdminSession.mockReturnValue(true);
-      const updatedFolder = { id: "cfg_1", folderId: "f1", archived: false, name: "My Custom Name", sourceUrl: "url", createdAt: new Date(), updatedAt: new Date() };
+      const updatedFolder = {
+        id: "cfg_1",
+        folderId: "f1",
+        archived: false,
+        name: "My Custom Name",
+        sourceUrl: "url",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
       mocks.update.mockResolvedValue(updatedFolder);
 
       const response = await PUT(makeRequest({ id: "cfg_1", name: "My Custom Name" }));
 
       expect(response.status).toBe(200);
-      const body = await response.json() as { folder: typeof updatedFolder };
+      const body = (await response.json()) as { folder: typeof updatedFolder };
       expect(body.folder.name).toBe("My Custom Name");
       expect(mocks.update).toHaveBeenCalledWith({
         where: { id: "cfg_1" },
@@ -348,7 +473,15 @@ describe("/api/config/folders", () => {
     it("trims whitespace from name", async () => {
       mocks.auth.mockResolvedValue(adminSession);
       mocks.isAdminSession.mockReturnValue(true);
-      const updatedFolder = { id: "cfg_1", folderId: "f1", archived: false, name: "Trimmed Name", sourceUrl: "url", createdAt: new Date(), updatedAt: new Date() };
+      const updatedFolder = {
+        id: "cfg_1",
+        folderId: "f1",
+        archived: false,
+        name: "Trimmed Name",
+        sourceUrl: "url",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
       mocks.update.mockResolvedValue(updatedFolder);
 
       await PUT(makeRequest({ id: "cfg_1", name: "  Trimmed Name  " }));
@@ -366,7 +499,7 @@ describe("/api/config/folders", () => {
       const response = await PUT(makeRequest({ id: "cfg_1", name: "   " }));
 
       expect(response.status).toBe(400);
-      const body = await response.json() as { error: string };
+      const body = (await response.json()) as { error: string };
       expect(body.error).toMatch(/name/i);
     });
 
@@ -374,7 +507,10 @@ describe("/api/config/folders", () => {
       mocks.auth.mockResolvedValue(adminSession);
       mocks.isAdminSession.mockReturnValue(true);
       mocks.update.mockRejectedValue(
-        new Prisma.PrismaClientKnownRequestError("Not found", { code: "P2025", clientVersion: "0.0.0" }),
+        new Prisma.PrismaClientKnownRequestError("Not found", {
+          code: "P2025",
+          clientVersion: "0.0.0",
+        }),
       );
 
       const response = await PUT(makeRequest({ id: "nonexistent", name: "New Name" }));
@@ -385,13 +521,21 @@ describe("/api/config/folders", () => {
     it("archives a folder successfully", async () => {
       mocks.auth.mockResolvedValue(adminSession);
       mocks.isAdminSession.mockReturnValue(true);
-      const updatedFolder = { id: "cfg_1", folderId: "f1", archived: true, name: null, sourceUrl: "url", createdAt: new Date(), updatedAt: new Date() };
+      const updatedFolder = {
+        id: "cfg_1",
+        folderId: "f1",
+        archived: true,
+        name: null,
+        sourceUrl: "url",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
       mocks.update.mockResolvedValue(updatedFolder);
 
       const response = await PUT(makeRequest({ id: "cfg_1", archived: true }));
 
       expect(response.status).toBe(200);
-      const body = await response.json() as { folder: typeof updatedFolder };
+      const body = (await response.json()) as { folder: typeof updatedFolder };
       expect(body.folder.archived).toBe(true);
       expect(mocks.update).toHaveBeenCalledWith({
         where: { id: "cfg_1" },
@@ -403,7 +547,10 @@ describe("/api/config/folders", () => {
       mocks.auth.mockResolvedValue(adminSession);
       mocks.isAdminSession.mockReturnValue(true);
       mocks.update.mockRejectedValue(
-        new Prisma.PrismaClientKnownRequestError("Not found", { code: "P2025", clientVersion: "0.0.0" }),
+        new Prisma.PrismaClientKnownRequestError("Not found", {
+          code: "P2025",
+          clientVersion: "0.0.0",
+        }),
       );
 
       const response = await PUT(makeRequest({ id: "nonexistent", archived: false }));
@@ -438,20 +585,24 @@ describe("/api/config/folders", () => {
       const response = await DELETE(makeRequest({}));
 
       expect(response.status).toBe(400);
-      const body = await response.json() as { error: string };
+      const body = (await response.json()) as { error: string };
       expect(body.error).toMatch(/id/i);
     });
 
     it("deletes folder and related videos successfully", async () => {
       mocks.auth.mockResolvedValue(adminSession);
       mocks.isAdminSession.mockReturnValue(true);
-      mocks.findUnique.mockResolvedValue({ id: "cfg_1", folderId: "folder_drive_id", name: "My Folder" });
+      mocks.findUnique.mockResolvedValue({
+        id: "cfg_1",
+        folderId: "folder_drive_id",
+        name: "My Folder",
+      });
       mocks.delete.mockResolvedValue({});
 
       const response = await DELETE(makeRequest({ id: "cfg_1" }));
 
       expect(response.status).toBe(200);
-      const body = await response.json() as { ok: boolean };
+      const body = (await response.json()) as { ok: boolean };
       expect(body.ok).toBe(true);
       expect(mocks.delete).toHaveBeenCalledWith({ where: { id: "cfg_1" } });
     });
@@ -472,7 +623,10 @@ describe("/api/config/folders", () => {
       mocks.isAdminSession.mockReturnValue(true);
       mocks.findUnique.mockResolvedValue(null);
       mocks.delete.mockRejectedValue(
-        new Prisma.PrismaClientKnownRequestError("Not found", { code: "P2025", clientVersion: "0.0.0" }),
+        new Prisma.PrismaClientKnownRequestError("Not found", {
+          code: "P2025",
+          clientVersion: "0.0.0",
+        }),
       );
 
       const response = await DELETE(makeRequest({ id: "nonexistent" }));

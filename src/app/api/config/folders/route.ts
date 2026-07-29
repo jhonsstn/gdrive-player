@@ -4,8 +4,9 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdminSession } from "@/lib/authz";
 import { db } from "@/lib/db";
-import { getFolderName } from "@/lib/drive";
+import { DriveRequestError, getFolderName, listFolderVideos } from "@/lib/drive";
 import { parseDriveFolderId } from "@/lib/drive-url";
+import { matchMigrationVideos, type MigrationVideo } from "@/lib/folder-migration";
 import { syncFolderVideos } from "@/lib/sync";
 
 type FolderCreateBody = {
@@ -165,46 +166,126 @@ export async function PATCH(request: Request) {
   }
 
   if (existing.folderId === newFolderId) {
-    return NextResponse.json(
-      { error: "New URL points to the same folder" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "New URL points to the same folder" }, { status: 400 });
   }
 
-  let name: string | null = null;
-
-  if (session.accessToken) {
-    try {
-      name = await getFolderName(session.accessToken, newFolderId);
-    } catch {
-      // Non-fatal — folder will be updated without a new name.
-    }
+  if (!session.accessToken) {
+    return NextResponse.json({ error: "Missing Google Drive access token" }, { status: 401 });
   }
 
   try {
     const oldFolderId = existing.folderId;
+    // Inspect both folders before changing anything. A migration must never
+    // report success if it cannot determine how existing history maps.
+    const [name, oldDriveVideos, newDriveVideos, oldCatalog] = await Promise.all([
+      getFolderName(session.accessToken, newFolderId),
+      listFolderVideos(session.accessToken, oldFolderId),
+      listFolderVideos(session.accessToken, newFolderId),
+      db.folderVideo.findMany({
+        where: { folderId: oldFolderId },
+        include: { _count: { select: { watchProgress: true } } },
+      }),
+    ]);
+
+    const oldDriveById = new Map(oldDriveVideos.map((video) => [video.id, video]));
+    const sourceVideos: MigrationVideo[] = oldCatalog.map((video) => {
+      const driveVideo = oldDriveById.get(video.driveFileId);
+      return {
+        id: video.driveFileId,
+        name: driveVideo?.name ?? video.name,
+        mimeType: driveVideo?.mimeType ?? video.mimeType,
+        size: driveVideo?.size ?? video.size,
+        md5Checksum: driveVideo?.md5Checksum ?? null,
+        sha1Checksum: driveVideo?.sha1Checksum ?? null,
+        sha256Checksum: driveVideo?.sha256Checksum ?? null,
+      };
+    });
+
+    const migration = matchMigrationVideos(sourceVideos, newDriveVideos);
+    const catalogByDriveId = new Map(oldCatalog.map((video) => [video.driveFileId, video]));
+    const unmatchedWithHistory = migration.unmatchedOld.filter(
+      (video) => (catalogByDriveId.get(video.id)?._count.watchProgress ?? 0) > 0,
+    );
+
+    if (unmatchedWithHistory.length > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Migration stopped because some videos with watch history could not be matched safely.",
+          migration: {
+            matched: migration.matches.length,
+            unmatchedWithHistory: unmatchedWithHistory.length,
+            videos: unmatchedWithHistory.slice(0, 20).map((video) => video.name),
+          },
+        },
+        { status: 409 },
+      );
+    }
+
+    const matchedOldIds = new Set(migration.matches.map((match) => match.oldVideo.id));
+    const removableCatalogIds = oldCatalog
+      .filter((video) => !matchedOldIds.has(video.driveFileId))
+      .map((video) => video.id);
+
+    const folderVideoUpdates = migration.matches.map((match) => {
+      const catalogVideo = catalogByDriveId.get(match.oldVideo.id)!;
+      return db.folderVideo.update({
+        where: { id: catalogVideo.id },
+        data: {
+          folderId: newFolderId,
+          driveFileId: match.newVideo.id,
+          name: match.newVideo.name,
+          mimeType: match.newVideo.mimeType,
+          size: match.newVideo.size,
+          modifiedTime: match.newVideo.modifiedTime ? new Date(match.newVideo.modifiedTime) : null,
+        },
+      });
+    });
+
+    const newFolderVideos = migration.unmatchedNew.map((video) =>
+      db.folderVideo.create({
+        data: {
+          folderId: newFolderId,
+          driveFileId: video.id,
+          name: video.name,
+          mimeType: video.mimeType,
+          size: video.size,
+          modifiedTime: video.modifiedTime ? new Date(video.modifiedTime) : null,
+        },
+      }),
+    );
 
     const [updated] = await db.$transaction([
       db.configuredFolder.update({
         where: { id: body.id },
         data: { folderId: newFolderId, sourceUrl: body.sourceUrl, name },
       }),
-      // FolderVideo rows for old folderId are deleted; WatchProgress cascades.
-      // New FolderVideo rows will be synced after migration.
-      db.folderVideo.deleteMany({ where: { folderId: oldFolderId } }),
+      db.season.updateMany({
+        where: { folderId: oldFolderId },
+        data: { folderId: newFolderId },
+      }),
       db.userFolderLastSeen.updateMany({
         where: { folderId: oldFolderId },
         data: { folderId: newFolderId },
       }),
+      ...folderVideoUpdates,
+      db.folderVideo.deleteMany({ where: { id: { in: removableCatalogIds } } }),
+      ...newFolderVideos,
     ]);
 
-    // Sync videos for the new folderId in the background
-    if (session.accessToken) {
-      syncFolderVideos(session.accessToken, newFolderId).catch(() => {});
+    return NextResponse.json({
+      folder: updated,
+      migration: {
+        matched: migration.matches.length,
+        added: migration.unmatchedNew.length,
+        removed: removableCatalogIds.length,
+      },
+    });
+  } catch (error) {
+    if (error instanceof DriveRequestError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ folder: updated });
-  } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json({ error: "Target folder already configured" }, { status: 409 });
     }

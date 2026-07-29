@@ -65,9 +65,21 @@ describe("drive", () => {
       mockFetch.mockResolvedValue(
         jsonResponse({
           files: [
-            { id: "v1", name: "video.mp4", mimeType: "video/mp4", size: "1000", modifiedTime: "2024-01-01T00:00:00Z" },
+            {
+              id: "v1",
+              name: "video.mp4",
+              mimeType: "video/mp4",
+              size: "1000",
+              modifiedTime: "2024-01-01T00:00:00Z",
+            },
             { id: "d1", name: "doc.pdf", mimeType: "application/pdf", size: "500" },
-            { id: "v2", name: "clip.webm", mimeType: "video/webm", size: "2000", modifiedTime: "2024-01-02T00:00:00Z" },
+            {
+              id: "v2",
+              name: "clip.webm",
+              mimeType: "video/webm",
+              size: "2000",
+              modifiedTime: "2024-01-02T00:00:00Z",
+            },
           ],
         }),
       );
@@ -81,6 +93,9 @@ describe("drive", () => {
         size: "1000",
         folderId: "folder1",
         modifiedTime: "2024-01-01T00:00:00Z",
+        md5Checksum: null,
+        sha1Checksum: null,
+        sha256Checksum: null,
       });
       expect(videos[1].id).toBe("v2");
     });
@@ -196,7 +211,13 @@ describe("drive", () => {
       mockFetch.mockResolvedValue(
         jsonResponse({
           files: [
-            { id: "v1", name: "video.mp4", mimeType: "video/mp4", size: "1000", modifiedTime: "2024-01-01T00:00:00Z" },
+            {
+              id: "v1",
+              name: "video.mp4",
+              mimeType: "video/mp4",
+              size: "1000",
+              modifiedTime: "2024-01-01T00:00:00Z",
+            },
           ],
           nextPageToken: "next_token",
         }),
@@ -211,6 +232,9 @@ describe("drive", () => {
         size: "1000",
         folderId: "folder_page_1",
         modifiedTime: "2024-01-01T00:00:00Z",
+        md5Checksum: null,
+        sha1Checksum: null,
+        sha256Checksum: null,
       });
       expect(nextPageToken).toBe("next_token");
     });
@@ -263,7 +287,9 @@ describe("drive", () => {
     it("throws DriveRequestError on API failure", async () => {
       mockFetch.mockResolvedValue(errorResponse(500, "Server Error"));
 
-      await expect(listFolderVideosPage("token", "folder_page_6", {})).rejects.toThrow(DriveRequestError);
+      await expect(listFolderVideosPage("token", "folder_page_6", {})).rejects.toThrow(
+        DriveRequestError,
+      );
     });
   });
 
@@ -298,7 +324,9 @@ describe("drive", () => {
     it("throws DriveRequestError on API failure", async () => {
       mockFetch.mockResolvedValue(errorResponse(403, "Forbidden"));
 
-      await expect(getLatestVideoModifiedTime("token", "folder_latest_4")).rejects.toThrow(DriveRequestError);
+      await expect(getLatestVideoModifiedTime("token", "folder_latest_4")).rejects.toThrow(
+        DriveRequestError,
+      );
     });
   });
 });
