@@ -86,10 +86,13 @@ body {
   justify-content: center;
   background: black;
 }
-.video-js.vjs-fullscreen {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.video-js.vjs-fullscreen .vjs-control-bar {
+  transition: none;
+}
+.video-js.vjs-fullscreen.vjs-user-active .vjs-control-bar {
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 .video-js.vjs-fullscreen video {
   max-height: 100vh;
